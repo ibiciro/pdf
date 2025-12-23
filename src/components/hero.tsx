@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, Sparkles } from 'lucide-react';
+import { ArrowRight, Sparkles, FileText, File } from 'lucide-react';
 
 export default function Hero() {
   return (
@@ -16,20 +16,32 @@ export default function Hero() {
             {/* Badge */}
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-50 border border-blue-100 mb-8">
               <Sparkles className="w-4 h-4 text-blue-600" />
-              <span className="text-sm font-medium text-blue-600">Premium Content Monetization</span>
+              <span className="text-sm font-medium text-blue-600">Text & PDF Content Platform</span>
             </div>
             
             <h1 className="text-5xl sm:text-7xl font-extrabold mb-8 tracking-tight font-display leading-tight">
               <span className="text-gray-900">Monetize Your</span>
               <br />
               <span className="gradient-text">
-                Written Content
+                Text & PDF Content
               </span>
             </h1>
             
-            <p className="text-xl text-gray-600 mb-12 max-w-2xl mx-auto leading-relaxed">
-              Create timed, pay-per-session reading experiences. Readers pay to unlock your premium content for a limited time. Simple, secure, and profitable.
+            <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto leading-relaxed">
+              Create timed, pay-per-session reading experiences. Readers pay to unlock your premium articles and PDF documents for a limited time.
             </p>
+
+            {/* Content Type Badges */}
+            <div className="flex items-center justify-center gap-4 mb-12">
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-violet-50 border border-violet-200">
+                <FileText className="w-5 h-5 text-violet-600" />
+                <span className="text-sm font-semibold text-violet-700">Text Articles</span>
+              </div>
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-red-50 border border-red-200">
+                <File className="w-5 h-5 text-red-600" />
+                <span className="text-sm font-semibold text-red-700">PDF Documents</span>
+              </div>
+            </div>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
               <Link
@@ -53,7 +65,7 @@ export default function Hero() {
               {[
                 { value: "$2.5M+", label: "Creator Earnings" },
                 { value: "50K+", label: "Active Readers" },
-                { value: "10K+", label: "Premium Articles" },
+                { value: "10K+", label: "Text & PDF Content" },
               ].map((stat, index) => (
                 <div key={index} className="text-center">
                   <div className="text-3xl sm:text-4xl font-bold font-mono gradient-text mb-2">{stat.value}</div>

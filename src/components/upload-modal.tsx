@@ -1,17 +1,25 @@
 'use client';
 
-import { useState, useCallback } from 'react';
-import { X, Upload, FileText, Edit3, Clock, DollarSign, Loader2, Check, Download, Shield } from 'lucide-react';
+import { useState, useCallback, useRef } from 'react';
+import { X, Upload, FileText, Edit3, Clock, DollarSign, Loader2, Check, Download, Shield, AlertCircle } from 'lucide-react';
+import { createContentAction } from '@/app/actions';
 
 interface UploadModalProps {
   onClose: () => void;
+  onSuccess?: () => void;
 }
 
-export default function UploadModal({ onClose }: UploadModalProps) {
+export default function UploadModal({ onClose, onSuccess }: UploadModalProps) {
   const [step, setStep] = useState<'choose' | 'upload' | 'write' | 'settings' | 'success'>('choose');
   const [isDragging, setIsDragging] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [contentType, setContentType] = useState<'text' | 'pdf'>('text');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -35,18 +43,36 @@ export default function UploadModal({ onClose }: UploadModalProps) {
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
-    simulateUpload();
+    
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+      handleFileSelect(files[0]);
+    }
   }, []);
 
-  const simulateUpload = () => {
+  const handleFileSelect = (file: File) => {
+    if (file.type !== 'application/pdf') {
+      setError('Please upload a PDF file');
+      return;
+    }
+    
+    if (file.size > 10 * 1024 * 1024) { // 10MB limit
+      setError('File size must be less than 10MB');
+      return;
+    }
+    
+    setError(null);
+    setSelectedFile(file);
     setIsUploading(true);
     setUploadProgress(0);
     
+    // Simulate upload progress
     const interval = setInterval(() => {
       setUploadProgress((prev) => {
         if (prev >= 100) {
           clearInterval(interval);
           setIsUploading(false);
+          setContentType('pdf');
           setStep('settings');
           return 100;
         }
@@ -55,11 +81,51 @@ export default function UploadModal({ onClose }: UploadModalProps) {
     }, 200);
   };
 
-  const handlePublish = async () => {
-    setStep('success');
-    setTimeout(() => {
-      onClose();
-    }, 2000);
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      handleFileSelect(files[0]);
+    }
+  };
+
+  const handlePublish = async (saveAsDraft = false) => {
+    setError(null);
+    setIsSubmitting(true);
+    
+    try {
+      const priceInCents = Math.round(parseFloat(formData.price) * 100);
+      const downloadPriceInCents = formData.allowDownload 
+        ? Math.round(parseFloat(formData.downloadPrice) * 100) 
+        : undefined;
+      
+      const result = await createContentAction({
+        title: formData.title,
+        description: formData.description,
+        content_type: contentType,
+        content_body: contentType === 'text' ? formData.content : undefined,
+        pdf_url: contentType === 'pdf' && selectedFile ? `uploads/${selectedFile.name}` : undefined,
+        price_cents: priceInCents,
+        session_duration_minutes: parseInt(formData.duration),
+        allow_download: formData.allowDownload,
+        download_price_cents: downloadPriceInCents,
+        status: saveAsDraft ? 'draft' : 'published',
+      });
+
+      if (result.error) {
+        setError(result.error);
+        setIsSubmitting(false);
+        return;
+      }
+
+      setStep('success');
+      setTimeout(() => {
+        onSuccess?.();
+        onClose();
+      }, 2000);
+    } catch (err) {
+      setError('Failed to publish content. Please try again.');
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -92,80 +158,123 @@ export default function UploadModal({ onClose }: UploadModalProps) {
               <p className="text-gray-500 text-sm mt-1">Choose how you want to add your content</p>
             </div>
             
-            <div className="p-6 grid grid-cols-2 gap-4">
-              <button
-                onClick={() => setStep('upload')}
-                className="bg-gray-50 border border-gray-200 rounded-xl p-8 text-center hover:bg-gray-100 hover:border-gray-300 transition-all group"
-              >
-                <div className="w-16 h-16 mx-auto mb-4 rounded-xl bg-blue-50 flex items-center justify-center group-hover:scale-110 transition-transform">
-                  <Upload className="w-8 h-8 text-blue-600" />
+            <div className="p-6">
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
+                <div className="flex items-start gap-3">
+                  <FileText className="w-5 h-5 text-blue-600 mt-0.5" />
+                  <div>
+                    <h4 className="font-semibold text-blue-900 mb-1">Text & PDF Only</h4>
+                    <p className="text-sm text-blue-700">This platform is optimized for text articles and PDF documents. Choose your content type below.</p>
+                  </div>
                 </div>
-                <h4 className="font-semibold text-gray-900 mb-2">Upload PDF</h4>
-                <p className="text-sm text-gray-500">Upload an existing PDF document</p>
-              </button>
+              </div>
               
-              <button
-                onClick={() => setStep('write')}
-                className="bg-gray-50 border border-gray-200 rounded-xl p-8 text-center hover:bg-gray-100 hover:border-gray-300 transition-all group"
-              >
-                <div className="w-16 h-16 mx-auto mb-4 rounded-xl bg-violet-50 flex items-center justify-center group-hover:scale-110 transition-transform">
-                  <Edit3 className="w-8 h-8 text-violet-600" />
-                </div>
-                <h4 className="font-semibold text-gray-900 mb-2">Write Content</h4>
-                <p className="text-sm text-gray-500">Create content using our editor</p>
-              </button>
+              <div className="grid grid-cols-2 gap-4">
+                <button
+                  onClick={() => setStep('upload')}
+                  className="bg-gray-50 border border-gray-200 rounded-xl p-8 text-center hover:bg-gray-100 hover:border-gray-300 transition-all group"
+                >
+                  <div className="w-16 h-16 mx-auto mb-4 rounded-xl bg-red-50 flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <Upload className="w-8 h-8 text-red-600" />
+                  </div>
+                  <h4 className="font-semibold text-gray-900 mb-2">Upload PDF</h4>
+                  <p className="text-sm text-gray-500">Upload an existing PDF document (max 10MB)</p>
+                </button>
+                
+                <button
+                  onClick={() => {
+                    setContentType('text');
+                    setStep('write');
+                  }}
+                  className="bg-gray-50 border border-gray-200 rounded-xl p-8 text-center hover:bg-gray-100 hover:border-gray-300 transition-all group"
+                >
+                  <div className="w-16 h-16 mx-auto mb-4 rounded-xl bg-violet-50 flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <Edit3 className="w-8 h-8 text-violet-600" />
+                  </div>
+                  <h4 className="font-semibold text-gray-900 mb-2">Write Text</h4>
+                  <p className="text-sm text-gray-500">Create text content using our editor</p>
+                </button>
+              </div>
             </div>
           </>
         ) : step === 'upload' ? (
           <>
             <div className="p-6 border-b border-gray-100">
               <h3 className="text-xl font-bold text-gray-900 font-display">Upload PDF</h3>
-              <p className="text-gray-500 text-sm mt-1">Drag and drop your PDF file</p>
+              <p className="text-gray-500 text-sm mt-1">Drag and drop your PDF file (max 10MB)</p>
             </div>
             
             <div className="p-6">
+              {error && (
+                <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-xl flex items-center gap-3">
+                  <AlertCircle className="w-5 h-5 text-red-500" />
+                  <p className="text-red-700 text-sm">{error}</p>
+                </div>
+              )}
+              
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".pdf,application/pdf"
+                onChange={handleFileInputChange}
+                className="hidden"
+              />
+              
               <div
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
                 onDrop={handleDrop}
                 className={`border-2 border-dashed rounded-xl p-12 text-center transition-all ${
                   isDragging
-                    ? 'border-blue-400 bg-blue-50'
+                    ? 'border-red-400 bg-red-50'
                     : 'border-gray-200 hover:border-gray-300'
                 }`}
               >
                 {isUploading ? (
                   <div>
-                    <Loader2 className="w-12 h-12 text-blue-600 mx-auto mb-4 animate-spin" />
+                    <Loader2 className="w-12 h-12 text-red-600 mx-auto mb-4 animate-spin" />
                     <div className="w-full max-w-xs mx-auto h-2 bg-gray-100 rounded-full overflow-hidden">
                       <div
-                        className="h-full bg-gradient-to-r from-blue-500 to-violet-500 transition-all duration-300"
+                        className="h-full bg-gradient-to-r from-red-500 to-orange-500 transition-all duration-300"
                         style={{ width: `${uploadProgress}%` }}
                       />
                     </div>
-                    <p className="text-gray-500 mt-4">Uploading... {uploadProgress}%</p>
+                    <p className="text-gray-500 mt-4">
+                      {selectedFile ? `Uploading ${selectedFile.name}...` : 'Uploading...'} {uploadProgress}%
+                    </p>
                   </div>
                 ) : (
                   <>
-                    <FileText className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                    <p className="text-gray-700 mb-2">Drag and drop your PDF here</p>
-                    <p className="text-gray-400 text-sm mb-4">or</p>
+                    <div className="w-16 h-16 mx-auto mb-4 rounded-xl bg-red-50 flex items-center justify-center">
+                      <FileText className="w-8 h-8 text-red-500" />
+                    </div>
+                    <p className="text-gray-700 mb-2 font-medium">Drag and drop your PDF here</p>
+                    <p className="text-gray-400 text-sm mb-4">Supported format: PDF (max 10MB)</p>
                     <button
-                      onClick={simulateUpload}
-                      className="px-6 py-3 bg-gray-100 border border-gray-200 rounded-xl text-gray-700 font-medium hover:bg-gray-200 transition-colors"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="px-6 py-3 bg-red-50 border border-red-200 rounded-xl text-red-700 font-medium hover:bg-red-100 transition-colors"
                     >
                       Browse Files
                     </button>
                   </>
                 )}
               </div>
+              
+              <div className="mt-4 flex justify-start">
+                <button
+                  onClick={() => setStep('choose')}
+                  className="text-gray-500 hover:text-gray-700 text-sm font-medium"
+                >
+                  ← Back to options
+                </button>
+              </div>
             </div>
           </>
         ) : step === 'write' ? (
           <>
             <div className="p-6 border-b border-gray-100">
-              <h3 className="text-xl font-bold text-gray-900 font-display">Write Content</h3>
-              <p className="text-gray-500 text-sm mt-1">Create your content using our editor</p>
+              <h3 className="text-xl font-bold text-gray-900 font-display">Write Text Content</h3>
+              <p className="text-gray-500 text-sm mt-1">Create your article or text content</p>
             </div>
             
             <div className="p-6 space-y-4">
@@ -176,25 +285,35 @@ export default function UploadModal({ onClose }: UploadModalProps) {
                   value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                   placeholder="Enter your content title"
-                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-300"
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-300"
                 />
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Content</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Content
+                  <span className="text-gray-400 font-normal ml-2">({formData.content.length} characters)</span>
+                </label>
                 <textarea
                   value={formData.content}
                   onChange={(e) => setFormData({ ...formData, content: e.target.value })}
-                  placeholder="Write your content here..."
-                  rows={8}
-                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-300 resize-none font-reading"
+                  placeholder="Write your article or text content here. You can use plain text formatting..."
+                  rows={10}
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-300 resize-none font-reading leading-relaxed"
                 />
               </div>
               
-              <div className="flex justify-end">
+              <div className="flex justify-between items-center pt-2">
+                <button
+                  onClick={() => setStep('choose')}
+                  className="text-gray-500 hover:text-gray-700 text-sm font-medium"
+                >
+                  ← Back to options
+                </button>
                 <button
                   onClick={() => setStep('settings')}
-                  className="btn-glow px-6 py-3 rounded-xl text-white font-semibold"
+                  disabled={!formData.content.trim()}
+                  className="btn-glow px-6 py-3 rounded-xl text-white font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Continue
                 </button>
@@ -308,18 +427,64 @@ export default function UploadModal({ onClose }: UploadModalProps) {
                 )}
               </div>
               
+              {error && (
+                <div className="p-4 bg-red-50 border border-red-200 rounded-xl flex items-center gap-3">
+                  <AlertCircle className="w-5 h-5 text-red-500" />
+                  <p className="text-red-700 text-sm">{error}</p>
+                </div>
+              )}
+
+              {/* Content Type Badge */}
+              <div className="p-4 bg-gray-50 rounded-xl border border-gray-200">
+                <div className="flex items-center gap-3">
+                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                    contentType === 'pdf' ? 'bg-red-100' : 'bg-violet-100'
+                  }`}>
+                    <FileText className={`w-5 h-5 ${
+                      contentType === 'pdf' ? 'text-red-600' : 'text-violet-600'
+                    }`} />
+                  </div>
+                  <div>
+                    <div className="font-medium text-gray-900">
+                      {contentType === 'pdf' ? 'PDF Document' : 'Text Article'}
+                    </div>
+                    <div className="text-sm text-gray-500">
+                      {contentType === 'pdf' && selectedFile 
+                        ? selectedFile.name 
+                        : `${formData.content.length} characters`}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               <div className="flex gap-4 pt-4">
                 <button
                   onClick={() => setStep('choose')}
-                  className="flex-1 py-4 bg-gray-100 rounded-xl text-gray-600 font-medium hover:bg-gray-200 transition-colors"
+                  disabled={isSubmitting}
+                  className="flex-1 py-4 bg-gray-100 rounded-xl text-gray-600 font-medium hover:bg-gray-200 transition-colors disabled:opacity-50"
                 >
                   Back
                 </button>
                 <button
-                  onClick={handlePublish}
-                  className="flex-1 btn-glow py-4 rounded-xl text-white font-semibold"
+                  onClick={() => handlePublish(true)}
+                  disabled={isSubmitting || !formData.title.trim()}
+                  className="py-4 px-6 border border-gray-300 rounded-xl text-gray-700 font-medium hover:bg-gray-50 transition-colors disabled:opacity-50"
                 >
-                  Publish Content
+                  Save Draft
+                </button>
+                <button
+                  onClick={() => handlePublish(false)}
+                  disabled={isSubmitting || !formData.title.trim()}
+                  className="flex-1 btn-glow py-4 rounded-xl text-white font-semibold disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      Publishing...
+                    </>
+                  ) : (
+                    'Publish Content'
+                  )}
                 </button>
               </div>
             </div>
