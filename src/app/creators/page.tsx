@@ -1,9 +1,14 @@
 import Navbar from "@/components/navbar";
 import Footer from "@/components/footer";
 import Link from "next/link";
-import { ArrowRight, DollarSign, BarChart3, Shield, Clock, Users, Zap, Check } from "lucide-react";
+import { ArrowRight, DollarSign, BarChart3, Shield, Clock, Users, Zap, Check, FileText, File } from "lucide-react";
 
 const features = [
+  {
+    icon: FileText,
+    title: "Text & PDF Support",
+    description: "Write articles directly or upload PDF documents. We're optimized for text-based content.",
+  },
   {
     icon: DollarSign,
     title: "Earn Per Session",
@@ -22,12 +27,7 @@ const features = [
   {
     icon: Shield,
     title: "Content Protection",
-    description: "Your content is protected in our secure reading environment. No copying or downloading.",
-  },
-  {
-    icon: Users,
-    title: "Build Your Audience",
-    description: "Grow your reader base with our discovery features and recommendation engine.",
+    description: "Your text and PDF content is protected in our secure reading environment.",
   },
   {
     icon: Zap,
@@ -44,8 +44,8 @@ const steps = [
   },
   {
     number: "02",
-    title: "Upload Your Content",
-    description: "Upload PDFs or write directly in our editor. Set your price and session duration.",
+    title: "Add Text or PDF Content",
+    description: "Write text articles in our editor or upload PDF documents. Set your price and session duration.",
   },
   {
     number: "03",
