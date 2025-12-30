@@ -105,4 +105,3 @@ export default function TimerHUD({ timeRemaining, totalTime, status, onClick }: 
     </button>
   );
 }
-}

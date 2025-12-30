@@ -1,10 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import { Star, Clock, Eye, Heart, User as UserIcon, Calendar, FileText, ArrowRight, X } from 'lucide-react';
+import { Star, Clock, Eye, Heart, User as UserIcon, Calendar, FileText, ArrowRight, X, Download, Shield, Lock } from 'lucide-react';
 import { User } from '@supabase/supabase-js';
 import Link from 'next/link';
 import PaymentModal from './payment-modal';
+import SecureDownloadModal from './secure-download-modal';
 import QualityRating, { QualityBadges } from './quality-rating';
 
 interface ContentDetailClientProps {
@@ -14,15 +15,17 @@ interface ContentDetailClientProps {
     description: string;
     author: string;
     authorBio: string;
-    thumbnail: string;
+    thumbnail: string | null;
     price: number;
     sessionDuration: number;
     rating: number;
     reviewCount: number;
     readCount: number;
     likeCount: number;
-    contentType: string;
+    contentType: 'text' | 'pdf';
     createdAt: string;
+    allowDownload?: boolean;
+    downloadPrice?: number;
     qualityRatings?: {
       facts: number;
       works: number;
@@ -36,6 +39,7 @@ interface ContentDetailClientProps {
 
 export default function ContentDetailClient({ content, user }: ContentDetailClientProps) {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [showDownloadModal, setShowDownloadModal] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
 
   const handlePayAndRead = () => {
@@ -44,6 +48,14 @@ export default function ContentDetailClient({ content, user }: ContentDetailClie
       return;
     }
     setShowPaymentModal(true);
+  };
+
+  const handleDownload = () => {
+    if (!user) {
+      window.location.href = '/sign-in';
+      return;
+    }
+    setShowDownloadModal(true);
   };
 
   // Mock quality ratings for demo
@@ -60,22 +72,42 @@ export default function ContentDetailClient({ content, user }: ContentDetailClie
       <main className="pt-20">
         {/* Hero Section */}
         <div className="relative h-[50vh] min-h-[400px] overflow-hidden">
-          {/* Background Image */}
-          <div
-            className="absolute inset-0 bg-cover bg-center"
-            style={{
-              backgroundImage: `url(${content.thumbnail})`,
-            }}
-          />
+          {/* Background Image or Gradient */}
+          {content.thumbnail ? (
+            <div
+              className="absolute inset-0 bg-cover bg-center"
+              style={{
+                backgroundImage: `url(${content.thumbnail})`,
+              }}
+            />
+          ) : (
+            <div className={`absolute inset-0 ${
+              content.contentType === 'pdf'
+                ? 'bg-gradient-to-br from-red-100 via-red-50 to-orange-50'
+                : 'bg-gradient-to-br from-violet-100 via-violet-50 to-purple-50'
+            }`}>
+              <div className="absolute inset-0 flex items-center justify-center opacity-20">
+                <FileText className={`w-64 h-64 ${
+                  content.contentType === 'pdf' ? 'text-red-300' : 'text-violet-300'
+                }`} />
+              </div>
+            </div>
+          )}
           <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/50 to-white" />
           
           {/* Content */}
           <div className="relative h-full container mx-auto px-6 flex items-end pb-16">
             <div className="max-w-3xl">
               {/* Content Type Badge */}
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-white/90 backdrop-blur-sm rounded-full mb-6 shadow-sm">
-                <FileText className="w-4 h-4 text-blue-600" />
-                <span className="text-sm text-blue-600 capitalize font-medium">{content.contentType}</span>
+              <div className={`inline-flex items-center gap-2 px-3 py-1.5 backdrop-blur-sm rounded-full mb-6 shadow-sm ${
+                content.contentType === 'pdf' 
+                  ? 'bg-red-500/90 text-white' 
+                  : 'bg-violet-500/90 text-white'
+              }`}>
+                <FileText className="w-4 h-4" />
+                <span className="text-sm capitalize font-semibold">
+                  {content.contentType === 'pdf' ? 'PDF Document' : 'Text Article'}
+                </span>
               </div>
               
               <h1 className="text-4xl md:text-5xl font-bold text-white font-display mb-4 drop-shadow-lg">
@@ -169,6 +201,33 @@ export default function ContentDetailClient({ content, user }: ContentDetailClie
                     <ArrowRight className="w-5 h-5" />
                   </button>
                 </div>
+                
+                {/* Download Option */}
+                {content.allowDownload && content.downloadPrice && content.downloadPrice > 0 && (
+                  <div className="mt-4 p-4 bg-gradient-to-r from-violet-50 to-purple-50 rounded-xl border border-violet-100">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-violet-100 flex items-center justify-center">
+                          <Shield className="w-5 h-5 text-violet-600" />
+                        </div>
+                        <div>
+                          <p className="font-medium text-gray-900 text-sm">Secure Download Available</p>
+                          <p className="text-xs text-gray-500 flex items-center gap-1">
+                            <Lock className="w-3 h-3" />
+                            Encrypted & device-locked
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={handleDownload}
+                        className="px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-lg font-medium text-sm flex items-center gap-2 transition-colors"
+                      >
+                        <Download className="w-4 h-4" />
+                        ${(content.downloadPrice / 100).toFixed(2)}
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
             
@@ -178,6 +237,20 @@ export default function ContentDetailClient({ content, user }: ContentDetailClie
               <p className="text-gray-700 leading-relaxed mb-6">
                 {content.description}
               </p>
+              
+              {/* Protection Features */}
+              <div className="bg-green-50 border border-green-100 rounded-xl p-4 mb-6">
+                <div className="flex items-start gap-3">
+                  <Shield className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-medium text-green-800 text-sm">Protected Content</p>
+                    <p className="text-xs text-green-600 mt-1">
+                      This content is protected with encryption, watermarking, and anti-copy measures to ensure creators get fairly compensated.
+                    </p>
+                  </div>
+                </div>
+              </div>
+              
               <p className="text-gray-500 leading-relaxed">
                 This premium content is available for timed reading sessions. Once you purchase access, 
                 you'll have {content.sessionDuration} minutes to read the full content. You can extend 
@@ -247,6 +320,24 @@ export default function ContentDetailClient({ content, user }: ContentDetailClie
         <PaymentModal
           content={content}
           onClose={() => setShowPaymentModal(false)}
+        />
+      )}
+      
+      {/* Secure Download Modal */}
+      {showDownloadModal && user && (
+        <SecureDownloadModal
+          isOpen={showDownloadModal}
+          onClose={() => setShowDownloadModal(false)}
+          content={{
+            id: content.id,
+            title: content.title,
+            contentType: content.contentType,
+            downloadPrice: content.downloadPrice || 0,
+          }}
+          user={{
+            id: user.id,
+            email: user.email || '',
+          }}
         />
       )}
     </>

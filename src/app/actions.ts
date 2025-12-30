@@ -30,21 +30,29 @@ export const createContentAction = async (data: ContentFormData) => {
     return { error: "Not authenticated" };
   }
 
+  const insertData: any = {
+    creator_id: user.id,
+    title: data.title,
+    description: data.description,
+    content_type: data.content_type,
+    content_body: data.content_body || null,
+    pdf_url: data.pdf_url || null,
+    price_cents: data.price_cents,
+    session_duration_minutes: data.session_duration_minutes,
+    status: data.status,
+  };
+
+  // Add optional fields if they exist
+  if (data.allow_download !== undefined) {
+    insertData.allow_download = data.allow_download;
+  }
+  if (data.download_price_cents !== undefined) {
+    insertData.download_price_cents = data.download_price_cents;
+  }
+
   const { data: content, error } = await supabase
     .from('content')
-    .insert({
-      creator_id: user.id,
-      title: data.title,
-      description: data.description,
-      content_type: data.content_type,
-      content_body: data.content_body || null,
-      pdf_url: data.pdf_url || null,
-      price_cents: data.price_cents,
-      session_duration_minutes: data.session_duration_minutes,
-      allow_download: data.allow_download,
-      download_price_cents: data.download_price_cents || null,
-      status: data.status,
-    })
+    .insert(insertData)
     .select()
     .single();
 
@@ -215,14 +223,7 @@ export const getBrowseContentAction = async (category?: string, search?: string)
 
   let query = supabase
     .from('content')
-    .select(`
-      *,
-      users!content_creator_id_fkey (
-        id,
-        full_name,
-        avatar_url
-      )
-    `)
+    .select('*')
     .eq('status', 'published')
     .order('created_at', { ascending: false });
 
@@ -245,14 +246,7 @@ export const getContentByIdAction = async (contentId: string) => {
 
   const { data: content, error } = await supabase
     .from('content')
-    .select(`
-      *,
-      users!content_creator_id_fkey (
-        id,
-        full_name,
-        avatar_url
-      )
-    `)
+    .select('*')
     .eq('id', contentId)
     .single();
 

@@ -1,7 +1,8 @@
 {
   "private": true,
   "scripts": {
-    "dev": "next dev -H 0.0.0.0",
+    "dev": "node start-dev.js",
+    "dev:tempo": "next dev -H 0.0.0.0",
     "build": "next build",
     "start": "next start"
   },
