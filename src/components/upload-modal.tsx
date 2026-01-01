@@ -386,19 +386,21 @@ export default function UploadModal({ onClose, onSuccess }: UploadModalProps) {
               </div>
 
               {/* Download Option */}
-              <div className="p-4 bg-gray-50 rounded-xl border border-gray-200">
+              <div className="p-4 bg-gradient-to-r from-violet-50 to-purple-50 rounded-xl border border-violet-200">
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-3">
-                    <Download className="w-5 h-5 text-gray-600" />
+                    <div className="w-10 h-10 rounded-lg bg-violet-100 flex items-center justify-center">
+                      <Download className="w-5 h-5 text-violet-600" />
+                    </div>
                     <div>
-                      <div className="font-medium text-gray-900">Allow Downloads</div>
-                      <div className="text-sm text-gray-500">Users can purchase a watermarked copy</div>
+                      <div className="font-medium text-gray-900">Enable Secure Downloads</div>
+                      <div className="text-sm text-gray-500">Users can purchase encrypted, device-locked copies</div>
                     </div>
                   </div>
                   <button
                     onClick={() => setFormData({ ...formData, allowDownload: !formData.allowDownload })}
                     className={`w-12 h-6 rounded-full transition-colors ${
-                      formData.allowDownload ? 'bg-blue-600' : 'bg-gray-300'
+                      formData.allowDownload ? 'bg-violet-600' : 'bg-gray-300'
                     }`}
                   >
                     <div className={`w-5 h-5 bg-white rounded-full shadow transition-transform ${
@@ -408,21 +410,37 @@ export default function UploadModal({ onClose, onSuccess }: UploadModalProps) {
                 </div>
                 
                 {formData.allowDownload && (
-                  <div className="mt-3 pt-3 border-t border-gray-200">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Download Price</label>
-                    <div className="relative">
-                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">$</span>
-                      <input
-                        type="text"
-                        value={formData.downloadPrice}
-                        onChange={(e) => setFormData({ ...formData, downloadPrice: e.target.value })}
-                        className="w-full pl-8 pr-4 py-2 bg-white border border-gray-200 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/50 font-mono text-sm"
-                      />
+                  <div className="mt-3 pt-3 border-t border-violet-200 space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Download Price</label>
+                      <div className="relative">
+                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">$</span>
+                        <input
+                          type="text"
+                          value={formData.downloadPrice}
+                          onChange={(e) => setFormData({ ...formData, downloadPrice: e.target.value })}
+                          className="w-full pl-8 pr-4 py-2 bg-white border border-gray-200 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-violet-500/50 font-mono text-sm"
+                        />
+                      </div>
                     </div>
-                    <p className="text-xs text-gray-500 mt-2 flex items-center gap-1">
-                      <Shield className="w-3 h-3" />
-                      Downloads include user-specific watermarks for protection
-                    </p>
+                    
+                    <div className="bg-white/80 rounded-lg p-3">
+                      <p className="text-xs font-medium text-violet-800 mb-2">Protection Features:</p>
+                      <ul className="text-xs text-violet-600 space-y-1">
+                        <li className="flex items-center gap-2">
+                          <Shield className="w-3 h-3" />
+                          AES-256 encryption with personal password
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <Shield className="w-3 h-3" />
+                          Device fingerprint binding (cannot share)
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <Shield className="w-3 h-3" />
+                          Copy & screenshot prevention
+                        </li>
+                      </ul>
+                    </div>
                   </div>
                 )}
               </div>

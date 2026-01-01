@@ -22,15 +22,15 @@ export default async function BrowsePage() {
   const transformedContent = content.map((item: any) => ({
     id: item.id,
     title: item.title,
-    author: item.users?.full_name || 'Anonymous',
+    author: 'Creator',
     thumbnail: item.thumbnail_url,
     price: item.price_cents,
     sessionDuration: item.session_duration_minutes,
-    rating: 0, // Will be fetched separately or calculated
+    rating: 0,
     reviewCount: 0,
     readCount: item.total_reads || 0,
     likeCount: 0,
-    contentType: item.content_type,
+    contentType: item.content_type || 'text',
   }));
   return (
     <div className="min-h-screen bg-white">

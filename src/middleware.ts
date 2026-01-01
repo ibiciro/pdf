@@ -1,2 +1,2 @@
-// This file is intentionally empty
-// The main middleware is in the project root: middleware.ts
+// Re-export middleware from root
+export { middleware, config } from "../middleware";

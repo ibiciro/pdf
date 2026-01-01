@@ -19,6 +19,7 @@ const featuredContent = [
     reviewCount: 124,
     readCount: 1520,
     likeCount: 342,
+    contentType: 'text' as const,
   },
   {
     id: '2',
@@ -31,6 +32,7 @@ const featuredContent = [
     reviewCount: 89,
     readCount: 980,
     likeCount: 256,
+    contentType: 'pdf' as const,
   },
   {
     id: '3',
@@ -43,6 +45,7 @@ const featuredContent = [
     reviewCount: 203,
     readCount: 2340,
     likeCount: 567,
+    contentType: 'pdf' as const,
   },
   {
     id: '4',
@@ -55,6 +58,7 @@ const featuredContent = [
     reviewCount: 156,
     readCount: 1890,
     likeCount: 423,
+    contentType: 'text' as const,
   },
   {
     id: '5',
@@ -67,6 +71,7 @@ const featuredContent = [
     reviewCount: 67,
     readCount: 720,
     likeCount: 189,
+    contentType: 'text' as const,
   },
   {
     id: '6',
@@ -79,6 +84,7 @@ const featuredContent = [
     reviewCount: 98,
     readCount: 1120,
     likeCount: 298,
+    contentType: 'pdf' as const,
   },
 ];
 

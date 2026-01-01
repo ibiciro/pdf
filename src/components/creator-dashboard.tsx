@@ -20,10 +20,13 @@ import {
   Home,
   AlertCircle,
   Loader2,
-  RefreshCw
+  RefreshCw,
+  Download,
+  Shield
 } from 'lucide-react';
 import Link from 'next/link';
 import UploadModal from './upload-modal';
+import DashboardSidebar from './dashboard-sidebar';
 import { getCreatorContentAction, deleteContentAction, updateContentAction } from '@/app/actions';
 
 interface CreatorDashboardProps {
@@ -44,6 +47,8 @@ interface ContentItem {
   total_earnings_cents: number;
   created_at: string;
   thumbnail_url: string | null;
+  allow_download?: boolean;
+  download_price_cents?: number;
 }
 
 interface AnalyticsData {
@@ -53,14 +58,6 @@ interface AnalyticsData {
   activeReaders: number;
   avgRating: number;
 }
-
-const sidebarItems = [
-  { icon: Home, label: 'Overview', key: 'overview' },
-  { icon: FileText, label: 'My Content', key: 'content' },
-  { icon: BarChart3, label: 'Analytics', key: 'analytics' },
-  { icon: DollarSign, label: 'Earnings', key: 'earnings' },
-  { icon: Settings, label: 'Settings', key: 'settings' },
-];
 
 export default function CreatorDashboard({ user, initialContent = [], initialAnalytics }: CreatorDashboardProps) {
   const [showUploadModal, setShowUploadModal] = useState(false);
@@ -160,46 +157,7 @@ export default function CreatorDashboard({ user, initialContent = [], initialAna
   return (
     <div className="flex min-h-screen pt-16 bg-gray-50">
       {/* Sidebar */}
-      <aside className="fixed left-0 top-16 bottom-0 w-64 bg-white border-r border-gray-200 p-6 hidden lg:block">
-        <div className="mb-8">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-violet-500 flex items-center justify-center text-sm font-bold text-white">
-              {user.email?.charAt(0).toUpperCase()}
-            </div>
-            <div>
-              <div className="font-semibold text-gray-900 text-sm">{user.email?.split('@')[0]}</div>
-              <div className="text-xs text-gray-500">Creator</div>
-            </div>
-          </div>
-        </div>
-        
-        <nav className="space-y-2">
-          {sidebarItems.map((item) => (
-            <button
-              key={item.label}
-              onClick={() => setActiveTab(item.key)}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
-                activeTab === item.key
-                  ? 'bg-blue-50 text-blue-600 border border-blue-200'
-                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-              }`}
-            >
-              <item.icon className="w-5 h-5" />
-              <span className="font-medium">{item.label}</span>
-            </button>
-          ))}
-        </nav>
-        
-        <div className="absolute bottom-6 left-6 right-6">
-          <button
-            onClick={() => setShowUploadModal(true)}
-            className="w-full btn-glow py-3 rounded-xl text-white font-semibold flex items-center justify-center gap-2"
-          >
-            <Plus className="w-5 h-5" />
-            New Content
-          </button>
-        </div>
-      </aside>
+      <DashboardSidebar user={user} activeTab={activeTab} />
       
       {/* Main Content */}
       <main className="flex-1 lg:ml-64 p-6 lg:p-8">

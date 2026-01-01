@@ -14,10 +14,17 @@ export default async function Dashboard() {
     return redirect("/sign-in");
   }
 
+  // Fetch user's content from database
+  const { data: content } = await supabase
+    .from('content')
+    .select('*')
+    .eq('creator_id', user.id)
+    .order('created_at', { ascending: false });
+
   return (
     <div className="min-h-screen bg-gray-50">
       <DashboardNavbar />
-      <CreatorDashboard user={user} />
+      <CreatorDashboard user={user} initialContent={content || []} />
     </div>
   );
 }

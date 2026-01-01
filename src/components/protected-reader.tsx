@@ -15,6 +15,8 @@ interface ProtectedReaderProps {
     author: string;
     sessionDuration: number;
     content: string;
+    contentType?: 'text' | 'pdf';
+    pdfUrl?: string | null;
     allowDownload?: boolean;
     downloadPrice?: number;
   };
@@ -241,9 +243,41 @@ export default function ProtectedReader({ content, user }: ProtectedReaderProps)
             </div>
           </div>
 
-          <div className="prose prose-gray max-w-none">
-            {renderContent(content.content)}
+          {/* Content Type Badge */}
+          <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full mb-6 ${
+            content.contentType === 'pdf' 
+              ? 'bg-red-100 text-red-700' 
+              : 'bg-violet-100 text-violet-700'
+          }`}>
+            <BookOpen className="w-4 h-4" />
+            <span className="text-sm font-medium">
+              {content.contentType === 'pdf' ? 'PDF Document' : 'Text Article'}
+            </span>
           </div>
+
+          {/* Render PDF or Text content */}
+          {content.contentType === 'pdf' && content.pdfUrl ? (
+            <div className="bg-gray-100 rounded-xl p-4 border border-gray-200">
+              <div className="aspect-[3/4] bg-white rounded-lg shadow-inner flex items-center justify-center">
+                <div className="text-center p-8">
+                  <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-red-100 flex items-center justify-center">
+                    <Download className="w-8 h-8 text-red-600" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">PDF Document</h3>
+                  <p className="text-gray-500 text-sm mb-4">
+                    This is a PDF document. In a full implementation, it would be displayed here using a PDF viewer.
+                  </p>
+                  <p className="text-xs text-gray-400">
+                    PDF URL: {content.pdfUrl}
+                  </p>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="prose prose-gray max-w-none">
+              {renderContent(content.content)}
+            </div>
+          )}
 
           {/* Quality Rating Section */}
           <div className="mt-12 pt-8 border-t border-gray-200">
