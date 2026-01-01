@@ -26,6 +26,7 @@ const sidebarItems = [
   { icon: BarChart3, label: 'Analytics', key: 'analytics', href: '/dashboard/analytics' },
   { icon: DollarSign, label: 'Earnings', key: 'earnings', href: '/dashboard/earnings' },
   { icon: Settings, label: 'Settings', key: 'settings', href: '/dashboard/settings' },
+  { icon: Shield, label: 'Admin Panel', key: 'admin', href: '/admin', isAdmin: true },
 ];
 
 export default function DashboardSidebar({ user, activeTab }: DashboardSidebarProps) {
@@ -59,6 +60,25 @@ export default function DashboardSidebar({ user, activeTab }: DashboardSidebarPr
       <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
         {sidebarItems.map((item) => {
           const isActive = activeTab === item.key;
+          const isAdminItem = (item as any).isAdmin;
+          
+          // Show admin link styled differently
+          if (isAdminItem) {
+            return (
+              <Link
+                key={item.key}
+                href={item.href}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-amber-600 hover:bg-amber-50 hover:text-amber-700 border border-amber-200 mt-4"
+              >
+                <item.icon className="w-5 h-5" />
+                <span className="font-medium">{item.label}</span>
+                <span className="ml-auto text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">
+                  Admin
+                </span>
+              </Link>
+            );
+          }
+          
           return (
             <Link
               key={item.key}

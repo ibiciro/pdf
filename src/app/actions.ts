@@ -443,3 +443,429 @@ export const signOutAction = async () => {
   await supabase.auth.signOut();
   return redirect("/sign-in");
 };
+
+// ============== PAYMENT ACTIONS ==============
+
+export interface PaymentData {
+  contentId: string;
+  amount: number;
+  currency: string;
+  gateway: string;
+  type: 'purchase' | 'download';
+}
+
+export const createPaymentIntentAction = async (data: PaymentData) => {
+  const supabase = await createClient();
+  
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  if (!user) {
+    return { error: "Not authenticated" };
+  }
+
+  // Get enabled gateway settings
+  const { data: gatewaySettings } = await supabase
+    .from('payment_gateway_settings')
+    .select('*')
+    .eq('gateway_id', data.gateway)
+    .eq('is_enabled', true)
+    .single();
+
+  if (!gatewaySettings) {
+    return { error: "Payment gateway not available" };
+  }
+
+  // Verify content exists
+  const { data: content } = await supabase
+    .from('content')
+    .select('*')
+    .eq('id', data.contentId)
+    .single();
+
+  if (!content) {
+    return { error: "Content not found" };
+  }
+
+  // Create transaction record
+  const { data: transaction, error } = await supabase
+    .from('payment_transactions')
+    .insert({
+      user_id: user.id,
+      content_id: data.contentId,
+      gateway_id: data.gateway,
+      amount_cents: data.amount,
+      currency: data.currency,
+      transaction_type: data.type,
+      status: 'pending',
+      metadata: {
+        content_title: content.title,
+        session_duration: content.session_duration_minutes,
+      }
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error creating transaction:', error);
+    return { error: error.message };
+  }
+
+  return { 
+    success: true, 
+    transactionId: transaction.id,
+    gateway: data.gateway,
+  };
+};
+
+export const confirmPaymentAction = async (transactionId: string, externalId?: string) => {
+  const supabase = await createClient();
+  
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  if (!user) {
+    return { error: "Not authenticated" };
+  }
+
+  // Update transaction status
+  const { data: transaction, error } = await supabase
+    .from('payment_transactions')
+    .update({
+      status: 'completed',
+      external_id: externalId,
+      completed_at: new Date().toISOString(),
+    })
+    .eq('id', transactionId)
+    .eq('user_id', user.id)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error confirming payment:', error);
+    return { error: error.message };
+  }
+
+  // If this is for content purchase, create reading session
+  if (transaction.transaction_type === 'purchase' && transaction.content_id) {
+    const { data: content } = await supabase
+      .from('content')
+      .select('session_duration_minutes, creator_id')
+      .eq('id', transaction.content_id)
+      .single();
+
+    if (content) {
+      // Create reading session
+      await supabase.from('reading_sessions').insert({
+        reader_id: user.id,
+        content_id: transaction.content_id,
+        duration_minutes: content.session_duration_minutes,
+        amount_paid_cents: transaction.amount_cents,
+        status: 'active',
+      });
+
+      // Update creator earnings
+      await supabase.rpc('increment_earnings', {
+        content_id: transaction.content_id,
+        amount: transaction.amount_cents,
+      });
+    }
+  }
+
+  revalidatePath('/dashboard');
+  
+  return { success: true, transaction };
+};
+
+// ============== DOWNLOAD ACTIONS ==============
+
+export interface DownloadRecordData {
+  contentId: string;
+  deviceFingerprint: string;
+  encryptionKeyHash: string;
+}
+
+export const createDownloadRecordAction = async (data: DownloadRecordData) => {
+  const supabase = await createClient();
+  
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  if (!user) {
+    return { error: "Not authenticated" };
+  }
+
+  // Check if user has already downloaded this content
+  const { data: existingRecord } = await supabase
+    .from('download_records')
+    .select('*')
+    .eq('user_id', user.id)
+    .eq('content_id', data.contentId)
+    .single();
+
+  if (existingRecord) {
+    // Update existing record
+    if (existingRecord.download_count >= existingRecord.max_downloads) {
+      return { error: "Maximum downloads reached" };
+    }
+
+    // Check if device matches
+    if (existingRecord.device_fingerprint !== data.deviceFingerprint) {
+      return { error: "Download bound to different device" };
+    }
+
+    const { error } = await supabase
+      .from('download_records')
+      .update({
+        download_count: existingRecord.download_count + 1,
+        last_download_at: new Date().toISOString(),
+      })
+      .eq('id', existingRecord.id);
+
+    if (error) {
+      return { error: error.message };
+    }
+
+    return { success: true, downloadsRemaining: existingRecord.max_downloads - existingRecord.download_count - 1 };
+  }
+
+  // Create new download record
+  const expiresAt = new Date();
+  expiresAt.setDate(expiresAt.getDate() + 30); // 30 days expiry
+
+  const { data: record, error } = await supabase
+    .from('download_records')
+    .insert({
+      user_id: user.id,
+      content_id: data.contentId,
+      device_fingerprint: data.deviceFingerprint,
+      encryption_key_hash: data.encryptionKeyHash,
+      download_count: 1,
+      max_downloads: 3,
+      expires_at: expiresAt.toISOString(),
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error creating download record:', error);
+    return { error: error.message };
+  }
+
+  return { success: true, downloadsRemaining: 2 };
+};
+
+export const verifyDeviceForDownloadAction = async (contentId: string, deviceFingerprint: string) => {
+  const supabase = await createClient();
+  
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  if (!user) {
+    return { error: "Not authenticated", canDownload: false };
+  }
+
+  const { data: record } = await supabase
+    .from('download_records')
+    .select('*')
+    .eq('user_id', user.id)
+    .eq('content_id', contentId)
+    .single();
+
+  if (!record) {
+    return { canDownload: true, isNewDownload: true };
+  }
+
+  // Check device fingerprint
+  if (record.device_fingerprint !== deviceFingerprint) {
+    return { 
+      error: "This content can only be downloaded on the original device", 
+      canDownload: false 
+    };
+  }
+
+  // Check download limit
+  if (record.download_count >= record.max_downloads) {
+    return { 
+      error: "Maximum downloads reached", 
+      canDownload: false 
+    };
+  }
+
+  // Check expiry
+  if (record.expires_at && new Date(record.expires_at) < new Date()) {
+    return { 
+      error: "Download has expired", 
+      canDownload: false 
+    };
+  }
+
+  return { 
+    canDownload: true, 
+    downloadsRemaining: record.max_downloads - record.download_count 
+  };
+};
+
+// ============== DEVICE FINGERPRINT ACTIONS ==============
+
+export const registerDeviceFingerprintAction = async (fingerprint: string, deviceName?: string) => {
+  const supabase = await createClient();
+  
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  if (!user) {
+    return { error: "Not authenticated" };
+  }
+
+  const { data, error } = await supabase
+    .from('device_fingerprints')
+    .upsert({
+      user_id: user.id,
+      fingerprint,
+      device_name: deviceName || 'Unknown Device',
+      last_seen: new Date().toISOString(),
+    }, {
+      onConflict: 'user_id,fingerprint',
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error registering device:', error);
+    return { error: error.message };
+  }
+
+  return { success: true, device: data };
+};
+
+export const getUserDevicesAction = async () => {
+  const supabase = await createClient();
+  
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  if (!user) {
+    return { error: "Not authenticated", devices: [] };
+  }
+
+  const { data: devices, error } = await supabase
+    .from('device_fingerprints')
+    .select('*')
+    .eq('user_id', user.id)
+    .order('last_seen', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching devices:', error);
+    return { error: error.message, devices: [] };
+  }
+
+  return { devices: devices || [] };
+};
+
+// ============== ADMIN ACTIONS ==============
+
+export const updatePaymentGatewayAction = async (
+  gatewayId: string, 
+  settings: { isEnabled?: boolean; publicKey?: string }
+) => {
+  const supabase = await createClient();
+  
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  if (!user) {
+    return { error: "Not authenticated" };
+  }
+
+  // Check if user is admin
+  const { data: adminUser } = await supabase
+    .from('admin_users')
+    .select('role')
+    .eq('user_id', user.id)
+    .single();
+
+  // For demo, allow first user to act as admin
+  const { data: allUsers } = await supabase
+    .from('users')
+    .select('id')
+    .order('created_at', { ascending: true })
+    .limit(1);
+  
+  const isFirstUser = allUsers?.[0]?.id === user.id;
+
+  if (!adminUser && !isFirstUser) {
+    return { error: "Unauthorized" };
+  }
+
+  const updateData: any = {
+    updated_at: new Date().toISOString(),
+  };
+
+  if (settings.isEnabled !== undefined) {
+    updateData.is_enabled = settings.isEnabled;
+  }
+  if (settings.publicKey !== undefined) {
+    updateData.public_key = settings.publicKey;
+  }
+
+  const { error } = await supabase
+    .from('payment_gateway_settings')
+    .update(updateData)
+    .eq('gateway_id', gatewayId);
+
+  if (error) {
+    console.error('Error updating gateway:', error);
+    return { error: error.message };
+  }
+
+  revalidatePath('/admin');
+  
+  return { success: true };
+};
+
+export const getAdminStatsAction = async () => {
+  const supabase = await createClient();
+  
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  if (!user) {
+    return { error: "Not authenticated" };
+  }
+
+  // Verify admin status
+  const { data: allUsers } = await supabase
+    .from('users')
+    .select('id')
+    .order('created_at', { ascending: true })
+    .limit(1);
+  
+  const isFirstUser = allUsers?.[0]?.id === user.id;
+
+  const { data: adminUser } = await supabase
+    .from('admin_users')
+    .select('role')
+    .eq('user_id', user.id)
+    .single();
+
+  if (!adminUser && !isFirstUser) {
+    return { error: "Unauthorized" };
+  }
+
+  // Fetch stats
+  const [
+    { count: totalUsers },
+    { count: totalContent },
+    { count: totalSessions },
+    { data: transactions }
+  ] = await Promise.all([
+    supabase.from('users').select('*', { count: 'exact', head: true }),
+    supabase.from('content').select('*', { count: 'exact', head: true }),
+    supabase.from('reading_sessions').select('*', { count: 'exact', head: true }),
+    supabase.from('payment_transactions').select('amount_cents').eq('status', 'completed'),
+  ]);
+
+  const totalRevenue = transactions?.reduce((acc, t) => acc + t.amount_cents, 0) || 0;
+
+  return {
+    stats: {
+      totalUsers: totalUsers || 0,
+      totalContent: totalContent || 0,
+      totalSessions: totalSessions || 0,
+      totalRevenue,
+    }
+  };
+};
