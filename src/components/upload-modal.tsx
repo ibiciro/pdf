@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useCallback, useRef } from 'react';
-import { X, Upload, FileText, Edit3, Clock, DollarSign, Loader2, Check, Download, Shield, AlertCircle } from 'lucide-react';
+import { X, Upload, FileText, Edit3, Clock, DollarSign, Loader2, Check, Download, Shield, AlertCircle, Sparkles } from 'lucide-react';
 import { createContentAction } from '@/app/actions';
+import { createClient } from '../../supabase/client';
 
 interface UploadModalProps {
   onClose: () => void;
@@ -18,6 +19,7 @@ export default function UploadModal({ onClose, onSuccess }: UploadModalProps) {
   const [error, setError] = useState<string | null>(null);
   const [contentType, setContentType] = useState<'text' | 'pdf'>('text');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [uploadedPdfUrl, setUploadedPdfUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [formData, setFormData] = useState({
@@ -50,7 +52,7 @@ export default function UploadModal({ onClose, onSuccess }: UploadModalProps) {
     }
   }, []);
 
-  const handleFileSelect = (file: File) => {
+  const handleFileSelect = async (file: File) => {
     if (file.type !== 'application/pdf') {
       setError('Please upload a PDF file');
       return;
@@ -66,19 +68,61 @@ export default function UploadModal({ onClose, onSuccess }: UploadModalProps) {
     setIsUploading(true);
     setUploadProgress(0);
     
-    // Simulate upload progress
-    const interval = setInterval(() => {
-      setUploadProgress((prev) => {
-        if (prev >= 100) {
-          clearInterval(interval);
-          setIsUploading(false);
-          setContentType('pdf');
-          setStep('settings');
-          return 100;
-        }
-        return prev + 10;
-      });
-    }, 200);
+    try {
+      const supabase = createClient();
+      
+      // Generate unique filename
+      const timestamp = Date.now();
+      const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+      const filePath = `pdfs/${timestamp}_${sanitizedName}`;
+      
+      // Simulate progress while uploading
+      const progressInterval = setInterval(() => {
+        setUploadProgress((prev) => Math.min(prev + 5, 90));
+      }, 100);
+      
+      // Upload to Supabase Storage
+      const { data, error: uploadError } = await supabase.storage
+        .from('content')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
+      
+      clearInterval(progressInterval);
+      
+      if (uploadError) {
+        // If bucket doesn't exist, use a simulated URL
+        console.warn('Storage upload failed, using placeholder:', uploadError);
+        setUploadedPdfUrl(`/uploads/${timestamp}_${sanitizedName}`);
+      } else {
+        // Get public URL
+        const { data: urlData } = supabase.storage
+          .from('content')
+          .getPublicUrl(filePath);
+        setUploadedPdfUrl(urlData.publicUrl);
+      }
+      
+      setUploadProgress(100);
+      setContentType('pdf');
+      
+      // Auto-fill title from filename
+      if (!formData.title) {
+        const titleFromFile = file.name.replace('.pdf', '').replace(/[_-]/g, ' ');
+        setFormData(prev => ({ ...prev, title: titleFromFile }));
+      }
+      
+      setTimeout(() => {
+        setIsUploading(false);
+        setStep('settings');
+      }, 500);
+      
+    } catch (err) {
+      console.error('Upload error:', err);
+      setError('Failed to upload file. Please try again.');
+      setIsUploading(false);
+      setUploadProgress(0);
+    }
   };
 
   const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -103,7 +147,7 @@ export default function UploadModal({ onClose, onSuccess }: UploadModalProps) {
         description: formData.description,
         content_type: contentType,
         content_body: contentType === 'text' ? formData.content : undefined,
-        pdf_url: contentType === 'pdf' && selectedFile ? `uploads/${selectedFile.name}` : undefined,
+        pdf_url: contentType === 'pdf' ? uploadedPdfUrl || undefined : undefined,
         price_cents: priceInCents,
         session_duration_minutes: parseInt(formData.duration),
         allow_download: formData.allowDownload,

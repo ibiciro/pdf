@@ -92,19 +92,19 @@ export default function PricingPage() {
       <Navbar />
       
       {/* Hero */}
-      <section className="relative pt-32 pb-20 overflow-hidden">
+      <section className="relative pt-32 pb-20 overflow-hidden bg-gradient-to-br from-blue-50 via-white to-violet-50">
         <div className="absolute inset-0">
-          <div className="absolute top-1/3 left-1/4 w-96 h-96 bg-cyan-500 rounded-full filter blur-[128px] opacity-20" />
-          <div className="absolute bottom-1/3 right-1/4 w-96 h-96 bg-purple-500 rounded-full filter blur-[128px] opacity-20" />
+          <div className="absolute top-1/3 left-1/4 w-96 h-96 bg-blue-200 rounded-full filter blur-[128px] opacity-40" />
+          <div className="absolute bottom-1/3 right-1/4 w-96 h-96 bg-violet-200 rounded-full filter blur-[128px] opacity-40" />
         </div>
         
         <div className="container mx-auto px-6 relative">
           <div className="max-w-3xl mx-auto text-center">
-            <h1 className="text-5xl font-bold text-white font-display mb-6">
+            <h1 className="text-5xl font-bold text-gray-900 font-display mb-6">
               Simple, Transparent{" "}
               <span className="gradient-text">Pricing</span>
             </h1>
-            <p className="text-xl text-gray-400">
+            <p className="text-xl text-gray-600">
               No hidden fees. No surprises. Just fair pricing for creators and readers.
             </p>
           </div>
@@ -112,7 +112,7 @@ export default function PricingPage() {
       </section>
       
       {/* Pricing Cards */}
-      <section className="py-12 relative">
+      <section className="py-12 relative bg-white">
         <div className="container mx-auto px-6">
           <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
             {plans.map((plan, index) => (
@@ -120,33 +120,33 @@ export default function PricingPage() {
                 key={index}
                 className={`relative rounded-2xl p-8 ${
                   plan.popular
-                    ? 'glass-strong border-2 border-cyan-400/50 glow-cyan'
-                    : 'glass'
+                    ? 'bg-gradient-to-br from-violet-50 to-blue-50 border-2 border-violet-300 shadow-xl'
+                    : 'bg-gray-50 border border-gray-200'
                 }`}
               >
                 {plan.popular && (
-                  <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1 bg-gradient-to-r from-cyan-400 to-purple-500 rounded-full text-sm font-semibold text-white">
+                  <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1 bg-gradient-to-r from-blue-500 to-violet-500 rounded-full text-sm font-semibold text-white">
                     Most Popular
                   </div>
                 )}
                 
                 <div className="mb-6">
-                  <h3 className="text-xl font-bold text-white mb-2">{plan.name}</h3>
-                  <p className="text-gray-400 text-sm">{plan.description}</p>
+                  <h3 className="text-xl font-bold text-gray-900 mb-2">{plan.name}</h3>
+                  <p className="text-gray-500 text-sm">{plan.description}</p>
                 </div>
                 
                 <div className="mb-6">
                   <div className="flex items-baseline gap-2">
                     <span className="text-4xl font-bold font-mono gradient-text">{plan.price}</span>
-                    {plan.price !== "Free" && <span className="text-gray-400">/mo</span>}
+                    {plan.price !== "Free" && <span className="text-gray-500">/mo</span>}
                   </div>
-                  <p className="text-sm text-gray-500 mt-1">{plan.priceDetail}</p>
+                  <p className="text-sm text-gray-400 mt-1">{plan.priceDetail}</p>
                 </div>
                 
                 <ul className="space-y-3 mb-8">
                   {plan.features.map((feature, i) => (
-                    <li key={i} className="flex items-center gap-3 text-gray-300">
-                      <Check className="w-5 h-5 text-cyan-400 flex-shrink-0" />
+                    <li key={i} className="flex items-center gap-3 text-gray-600">
+                      <Check className="w-5 h-5 text-blue-500 flex-shrink-0" />
                       <span className="text-sm">{feature}</span>
                     </li>
                   ))}
@@ -157,7 +157,7 @@ export default function PricingPage() {
                   className={`w-full py-3 rounded-xl font-semibold flex items-center justify-center gap-2 transition-all ${
                     plan.popular
                       ? 'btn-glow text-white'
-                      : 'glass text-gray-300 hover:bg-white/10'
+                      : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'
                   }`}
                 >
                   {plan.cta}
@@ -170,18 +170,18 @@ export default function PricingPage() {
       </section>
       
       {/* FAQ */}
-      <section className="py-24 relative">
+      <section className="py-24 relative bg-gray-50">
         <div className="container mx-auto px-6">
           <div className="text-center mb-16">
-            <h2 className="text-3xl font-bold text-white font-display mb-4">Frequently Asked Questions</h2>
-            <p className="text-gray-400">Everything you need to know about PayPerRead pricing</p>
+            <h2 className="text-3xl font-bold text-gray-900 font-display mb-4">Frequently Asked Questions</h2>
+            <p className="text-gray-500">Everything you need to know about PayPerRead pricing</p>
           </div>
           
           <div className="max-w-3xl mx-auto space-y-6">
             {faqs.map((faq, index) => (
-              <div key={index} className="glass rounded-xl p-6">
-                <h3 className="text-lg font-semibold text-white mb-2">{faq.question}</h3>
-                <p className="text-gray-400">{faq.answer}</p>
+              <div key={index} className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">{faq.question}</h3>
+                <p className="text-gray-500">{faq.answer}</p>
               </div>
             ))}
           </div>
@@ -189,24 +189,23 @@ export default function PricingPage() {
       </section>
       
       {/* CTA */}
-      <section className="py-24 relative">
-        <div className="absolute inset-0 bg-gradient-to-t from-cyan-500/10 to-transparent" />
+      <section className="py-24 relative bg-gradient-to-br from-blue-600 to-violet-600">
         <div className="container mx-auto px-6 text-center relative">
           <h2 className="text-4xl font-bold text-white font-display mb-4">Ready to Get Started?</h2>
-          <p className="text-gray-400 mb-8 max-w-2xl mx-auto">
+          <p className="text-blue-100 mb-8 max-w-2xl mx-auto">
             Join thousands of creators and readers on PayPerRead today.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
               href="/sign-up"
-              className="btn-glow inline-flex items-center justify-center px-8 py-4 text-white rounded-xl text-lg font-semibold"
+              className="inline-flex items-center justify-center px-8 py-4 bg-white text-blue-600 rounded-xl text-lg font-semibold hover:bg-gray-50 transition-colors shadow-lg"
             >
               Create Account
               <ArrowRight className="ml-2 w-5 h-5" />
             </Link>
             <Link
               href="/browse"
-              className="inline-flex items-center justify-center px-8 py-4 text-gray-300 glass rounded-xl hover:bg-white/10 transition-all text-lg font-medium"
+              className="inline-flex items-center justify-center px-8 py-4 text-white border-2 border-white/30 rounded-xl hover:bg-white/10 transition-all text-lg font-medium"
             >
               Browse Content
             </Link>

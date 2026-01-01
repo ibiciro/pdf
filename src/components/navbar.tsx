@@ -1,13 +1,24 @@
 import Link from 'next/link'
 import { createClient } from '../../supabase/server'
 import { Button } from './ui/button'
-import { BookOpen, Search } from 'lucide-react'
+import { BookOpen, Search, ShieldCheck } from 'lucide-react'
 import UserProfile from './user-profile'
 
 export default async function Navbar() {
-  const supabase = createClient()
+  const supabase = await createClient()
 
-  const { data: { user } } = await (await supabase).auth.getUser()
+  const { data: { user } } = await supabase.auth.getUser()
+  
+  // Check if user is admin
+  let isAdmin = false;
+  if (user) {
+    const { data: userData } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+    isAdmin = userData?.role === 'admin' || userData?.role === 'superadmin';
+  }
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-sm border-b border-gray-100 shadow-sm">
@@ -29,6 +40,12 @@ export default async function Navbar() {
           <Link href="/pricing" className="text-gray-600 hover:text-blue-600 transition-colors font-medium">
             Pricing
           </Link>
+          {isAdmin && (
+            <Link href="/admin" className="text-purple-600 hover:text-purple-700 transition-colors font-medium flex items-center gap-1">
+              <ShieldCheck className="w-4 h-4" />
+              Admin
+            </Link>
+          )}
         </div>
         
         <div className="flex gap-4 items-center">

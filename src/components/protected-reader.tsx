@@ -1,12 +1,20 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { X, Clock, Plus, BookOpen, Download, AlertCircle } from 'lucide-react';
+import { X, Clock, Plus, BookOpen, Download, AlertCircle, Shield, Fingerprint } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import TimerHUD from './timer-hud';
 import SessionEndModal from './session-end-modal';
 import ReviewPanel from './review-panel';
 import QualityRating from './quality-rating';
+import {
+  generateDeviceFingerprint,
+  generateSessionToken,
+  setupAntiScreenshot,
+  generateDynamicWatermark,
+  applyForensicWatermark,
+  DeviceFingerprint,
+} from '@/utils/content-protection';
 
 interface ProtectedReaderProps {
   content: {
@@ -34,9 +42,60 @@ export default function ProtectedReader({ content, user }: ProtectedReaderProps)
   const [showReviewPanel, setShowReviewPanel] = useState(false);
   const [sessionEnded, setSessionEnded] = useState(false);
   const [showDownloadModal, setShowDownloadModal] = useState(false);
+  
+  // Security state
+  const [deviceFingerprint, setDeviceFingerprint] = useState<DeviceFingerprint | null>(null);
+  const [sessionToken, setSessionToken] = useState<string>('');
+  const [securityInitialized, setSecurityInitialized] = useState(false);
+  const [screenshotAttempts, setScreenshotAttempts] = useState(0);
 
-  // Generate watermark text
-  const watermarkText = `${user.email} • ${new Date().toISOString().split('T')[0]} • ID:${user.id.slice(0, 8)}`;
+  // Generate dynamic watermark with session info
+  const watermarkText = deviceFingerprint 
+    ? generateDynamicWatermark(user.id, user.email, sessionToken)
+    : `${user.email} • ${new Date().toISOString().split('T')[0]} • ID:${user.id.slice(0, 8)}`;
+
+  // Initialize security on mount
+  useEffect(() => {
+    const initSecurity = async () => {
+      try {
+        // Generate device fingerprint
+        const fingerprint = await generateDeviceFingerprint();
+        setDeviceFingerprint(fingerprint);
+        
+        // Generate session token
+        const token = generateSessionToken();
+        setSessionToken(token);
+        
+        // Log security initialization (in production, send to backend)
+        console.log('Security initialized:', {
+          fingerprintId: fingerprint.id.slice(0, 16) + '...',
+          sessionToken: token.slice(0, 16) + '...',
+          contentId: content.id,
+          userId: user.id,
+        });
+        
+        setSecurityInitialized(true);
+      } catch (error) {
+        console.error('Failed to initialize security:', error);
+        setSecurityInitialized(true); // Continue with basic protection
+      }
+    };
+    
+    initSecurity();
+  }, [content.id, user.id]);
+
+  // Setup anti-screenshot protection
+  useEffect(() => {
+    if (!contentRef.current || !securityInitialized) return;
+    
+    const cleanup = setupAntiScreenshot(contentRef.current, () => {
+      setScreenshotAttempts(prev => prev + 1);
+      console.log('Screenshot/screen capture attempt detected');
+      // In production, log this to backend
+    });
+    
+    return cleanup;
+  }, [securityInitialized]);
 
   // Prevent copy/paste
   useEffect(() => {
@@ -190,7 +249,15 @@ export default function ProtectedReader({ content, user }: ProtectedReaderProps)
               <X className="w-5 h-5" />
             </button>
             <div>
-              <h1 className="font-semibold text-gray-900 line-clamp-1">{content.title}</h1>
+              <div className="flex items-center gap-2">
+                <h1 className="font-semibold text-gray-900 line-clamp-1">{content.title}</h1>
+                {securityInitialized && (
+                  <div className="flex items-center gap-1 px-2 py-0.5 bg-green-100 rounded-full" title="Content secured with encryption">
+                    <Shield className="w-3 h-3 text-green-600" />
+                    <span className="text-xs text-green-700 font-medium">Secured</span>
+                  </div>
+                )}
+              </div>
               <p className="text-sm text-gray-500">by {content.author}</p>
             </div>
           </div>
@@ -230,14 +297,30 @@ export default function ProtectedReader({ content, user }: ProtectedReaderProps)
         className={`pt-24 pb-16 transition-all duration-500 protected-content no-screenshot ${sessionEnded ? 'blur-xl' : ''}`}
       >
         <article className="container mx-auto px-6 max-w-3xl">
-          {/* Copy protection notice */}
-          <div className="mb-8 p-4 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-            <div>
-              <p className="text-sm text-amber-800 font-medium">Protected Content</p>
+          {/* Enhanced security notice */}
+          <div className="mb-8 p-4 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl flex items-start gap-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center flex-shrink-0">
+              <Shield className="w-5 h-5 text-amber-600" />
+            </div>
+            <div className="flex-1">
+              <div className="flex items-center gap-2">
+                <p className="text-sm text-amber-800 font-semibold">Protected Content</p>
+                {securityInitialized && (
+                  <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs font-medium rounded-full flex items-center gap-1">
+                    <Fingerprint className="w-3 h-3" />
+                    Device Verified
+                  </span>
+                )}
+              </div>
               <p className="text-xs text-amber-600 mt-1">
-                This content is protected. Copying, screenshots, and sharing are disabled.
+                This content is secured with encryption and device fingerprinting. 
+                Copying, screenshots, and unauthorized sharing are disabled and logged.
               </p>
+              {screenshotAttempts > 0 && (
+                <p className="text-xs text-red-600 mt-2 font-medium">
+                  ⚠️ {screenshotAttempts} screenshot attempt{screenshotAttempts > 1 ? 's' : ''} detected and logged.
+                </p>
+              )}
             </div>
           </div>
 

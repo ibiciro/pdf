@@ -134,5 +134,41 @@ export default async function ReadPage({ params }: { params: { id: string } }) {
     redirect('/sign-in');
   }
 
-  return <ReaderView content={mockContent} />;
+  // Check if this is a demo ID
+  const isDemoId = params.id.startsWith('demo-');
+  
+  let contentData;
+  
+  if (isDemoId) {
+    // Use mock content for demo
+    contentData = mockContent;
+  } else {
+    // Try to fetch real content from database
+    const { data: content } = await supabase
+      .from('content')
+      .select(`
+        *,
+        users!content_creator_id_fkey (
+          id,
+          full_name
+        )
+      `)
+      .eq('id', params.id)
+      .single();
+    
+    if (content) {
+      contentData = {
+        id: content.id,
+        title: content.title,
+        author: content.users?.full_name || 'Anonymous',
+        sessionDuration: content.session_duration_minutes,
+        content: content.content_body || mockContent.content, // Use mock content as fallback
+      };
+    } else {
+      // Fallback to mock content
+      contentData = mockContent;
+    }
+  }
+
+  return <ReaderView content={contentData} />;
 }

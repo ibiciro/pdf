@@ -47,7 +47,7 @@ export default function SessionEndModal({ onExtend, onExit, pagesRead, timeSpent
         <div className="p-6 space-y-3">
           <button
             onClick={onExtend}
-            className="w-full btn-glow py-4 rounded-xl text-white font-semibold flex items-center justify-center gap-2"
+            className="w-full bg-gradient-to-r from-blue-500 to-violet-500 hover:from-blue-600 hover:to-violet-600 py-4 rounded-xl text-white font-semibold flex items-center justify-center gap-2 shadow-lg transition-all"
           >
             Continue Reading
             <ArrowRight className="w-5 h-5" />

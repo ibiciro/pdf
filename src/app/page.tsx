@@ -5,11 +5,12 @@ import ContentCard from "@/components/content-card";
 import { ArrowRight, BookOpen, Clock, DollarSign, Shield, Star, TrendingUp, Users, Zap } from 'lucide-react';
 import { createClient } from "../../supabase/server";
 import Link from "next/link";
+import { getFeaturedContentAction } from "./actions";
 
-// Mock featured content for demo
-const featuredContent = [
+// Fallback featured content for when database is empty
+const fallbackFeaturedContent = [
   {
-    id: '1',
+    id: 'demo-1',
     title: 'The Future of AI in Content Creation',
     author: 'Sarah Chen',
     thumbnail: 'https://images.unsplash.com/photo-1677442136019-21780ecad995?w=800&q=80',
@@ -19,9 +20,10 @@ const featuredContent = [
     reviewCount: 124,
     readCount: 1520,
     likeCount: 342,
+    contentType: 'text' as const,
   },
   {
-    id: '2',
+    id: 'demo-2',
     title: 'Mastering Web3 Development',
     author: 'Alex Rivera',
     thumbnail: 'https://images.unsplash.com/photo-1639762681485-074b7f938ba0?w=800&q=80',
@@ -31,9 +33,10 @@ const featuredContent = [
     reviewCount: 89,
     readCount: 980,
     likeCount: 256,
+    contentType: 'text' as const,
   },
   {
-    id: '3',
+    id: 'demo-3',
     title: 'Investment Strategies for 2024',
     author: 'Michael Park',
     thumbnail: 'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=800&q=80',
@@ -43,9 +46,10 @@ const featuredContent = [
     reviewCount: 203,
     readCount: 2340,
     likeCount: 567,
+    contentType: 'pdf' as const,
   },
   {
-    id: '4',
+    id: 'demo-4',
     title: 'The Psychology of Success',
     author: 'Emma Watson',
     thumbnail: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=800&q=80',
@@ -55,9 +59,10 @@ const featuredContent = [
     reviewCount: 156,
     readCount: 1890,
     likeCount: 423,
+    contentType: 'text' as const,
   },
   {
-    id: '5',
+    id: 'demo-5',
     title: 'Advanced Machine Learning Techniques',
     author: 'David Kim',
     thumbnail: 'https://images.unsplash.com/photo-1555949963-aa79dcee981c?w=800&q=80',
@@ -67,9 +72,10 @@ const featuredContent = [
     reviewCount: 67,
     readCount: 720,
     likeCount: 189,
+    contentType: 'pdf' as const,
   },
   {
-    id: '6',
+    id: 'demo-6',
     title: 'Building Sustainable Businesses',
     author: 'Lisa Green',
     thumbnail: 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=800&q=80',
@@ -79,6 +85,7 @@ const featuredContent = [
     reviewCount: 98,
     readCount: 1120,
     likeCount: 298,
+    contentType: 'text' as const,
   },
 ];
 
@@ -132,6 +139,27 @@ const testimonials = [
 export default async function Home() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
+  
+  // Fetch real content from database
+  const { content: dbContent } = await getFeaturedContentAction();
+  
+  // Transform DB content to match ContentCard props
+  const transformedContent = dbContent.map((item: any) => ({
+    id: item.id,
+    title: item.title,
+    author: item.users?.full_name || 'Anonymous',
+    thumbnail: item.thumbnail_url || 'https://images.unsplash.com/photo-1516979187457-637abb4f9353?w=800&q=80',
+    price: item.price_cents,
+    sessionDuration: item.session_duration_minutes,
+    rating: 4.5, // Default rating
+    reviewCount: 0,
+    readCount: item.total_reads || 0,
+    likeCount: 0,
+    contentType: item.content_type as 'text' | 'pdf',
+  }));
+  
+  // Use real content if available, otherwise fallback
+  const featuredContent = transformedContent.length > 0 ? transformedContent : fallbackFeaturedContent;
 
   return (
     <div className="min-h-screen bg-white">

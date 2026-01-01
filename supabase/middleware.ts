@@ -47,8 +47,27 @@ export const updateSession = async (request: NextRequest) => {
       return NextResponse.redirect(new URL("/sign-in", request.url));
     }
 
-    if (request.nextUrl.pathname === "/" && !error) {
-      return NextResponse.redirect(new URL("/", request.url));
+    // Admin protected routes
+    if (request.nextUrl.pathname.startsWith("/admin")) {
+      if (error || !user) {
+        return NextResponse.redirect(new URL("/sign-in", request.url));
+      }
+      
+      // Check if user has admin role
+      const { data: userData } = await supabase
+        .from('users')
+        .select('role')
+        .eq('id', user.id)
+        .single();
+      
+      if (!userData || !['admin', 'superadmin'].includes(userData.role || '')) {
+        return NextResponse.redirect(new URL("/dashboard", request.url));
+      }
+    }
+
+    // Read page requires authentication
+    if (request.nextUrl.pathname.startsWith("/read") && error) {
+      return NextResponse.redirect(new URL("/sign-in", request.url));
     }
 
     return response;

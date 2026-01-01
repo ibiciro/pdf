@@ -1,8 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { X, Clock, CreditCard, Check, Loader2 } from 'lucide-react';
+import { X, Clock, CreditCard, Check, Loader2, Shield } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { createReadingSessionAction } from '@/app/actions';
 
 interface PaymentModalProps {
   content: {
@@ -18,20 +19,36 @@ export default function PaymentModal({ content, onClose }: PaymentModalProps) {
   const router = useRouter();
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handlePayment = async () => {
     setIsProcessing(true);
+    setError(null);
     
-    // Simulate payment processing
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    setIsProcessing(false);
-    setIsSuccess(true);
-    
-    // Redirect to reader view after success animation
-    setTimeout(() => {
-      router.push(`/read/${content.id}`);
-    }, 1500);
+    try {
+      // Simulate payment processing delay
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      // Create reading session in database
+      const result = await createReadingSessionAction(content.id, content.price);
+      
+      if (result.error) {
+        setError(result.error);
+        setIsProcessing(false);
+        return;
+      }
+      
+      setIsProcessing(false);
+      setIsSuccess(true);
+      
+      // Redirect to reader view after success animation
+      setTimeout(() => {
+        router.push(`/read/${content.id}`);
+      }, 1500);
+    } catch (err) {
+      setError('Payment failed. Please try again.');
+      setIsProcessing(false);
+    }
   };
 
   return (
@@ -156,10 +173,16 @@ export default function PaymentModal({ content, onClose }: PaymentModalProps) {
             
             {/* Footer */}
             <div className="p-6">
+              {error && (
+                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm flex items-center gap-2">
+                  <X className="w-4 h-4 flex-shrink-0" />
+                  {error}
+                </div>
+              )}
               <button
                 onClick={handlePayment}
                 disabled={isProcessing}
-                className="w-full btn-glow py-4 rounded-xl text-white font-semibold text-lg flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full bg-gradient-to-r from-blue-500 to-violet-500 hover:from-blue-600 hover:to-violet-600 py-4 rounded-xl text-white font-semibold text-lg flex items-center justify-center gap-2 shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isProcessing ? (
                   <>
@@ -172,9 +195,10 @@ export default function PaymentModal({ content, onClose }: PaymentModalProps) {
                   </>
                 )}
               </button>
-              <p className="text-center text-xs text-gray-400 mt-4">
-                Secure payment powered by Stripe. Your session starts immediately after payment.
-              </p>
+              <div className="flex items-center justify-center gap-2 text-xs text-gray-400 mt-4">
+                <Shield className="w-4 h-4" />
+                <p>Secure payment. Your session starts immediately after payment.</p>
+              </div>
             </div>
           </>
         )}
