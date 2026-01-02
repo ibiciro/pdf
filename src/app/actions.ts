@@ -444,6 +444,78 @@ export const signOutAction = async () => {
   return redirect("/sign-in");
 };
 
+// ============== USER PROFILE ACTIONS ==============
+
+export interface UserProfileData {
+  fullName?: string;
+  bio?: string;
+  website?: string;
+  role?: 'reader' | 'creator' | 'admin';
+}
+
+export const updateUserProfileAction = async (data: UserProfileData) => {
+  const supabase = await createClient();
+  
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  if (!user) {
+    return { error: "Not authenticated" };
+  }
+
+  const updateData: any = {
+    updated_at: new Date().toISOString(),
+  };
+
+  if (data.fullName !== undefined) updateData.full_name = data.fullName;
+  if (data.bio !== undefined) updateData.bio = data.bio;
+  if (data.website !== undefined) updateData.website = data.website;
+  if (data.role !== undefined) updateData.role = data.role;
+
+  // Update user table
+  const { error } = await supabase
+    .from('users')
+    .update(updateData)
+    .eq('id', user.id);
+
+  if (error) {
+    console.error('Error updating user profile:', error);
+    return { error: error.message };
+  }
+
+  // Also update auth metadata
+  if (data.fullName) {
+    await supabase.auth.updateUser({
+      data: { full_name: data.fullName }
+    });
+  }
+
+  revalidatePath('/dashboard/settings');
+  
+  return { success: true };
+};
+
+export const getUserProfileAction = async () => {
+  const supabase = await createClient();
+  
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  if (!user) {
+    return { error: "Not authenticated", profile: null };
+  }
+
+  const { data: profile, error } = await supabase
+    .from('users')
+    .select('*')
+    .eq('id', user.id)
+    .single();
+
+  if (error) {
+    return { error: error.message, profile: null };
+  }
+
+  return { profile };
+};
+
 // ============== PAYMENT ACTIONS ==============
 
 export interface PaymentData {

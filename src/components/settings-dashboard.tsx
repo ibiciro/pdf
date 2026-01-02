@@ -20,6 +20,7 @@ import {
 import Link from 'next/link';
 import DashboardSidebar from './dashboard-sidebar';
 import { useState } from 'react';
+import { createClient } from '../../supabase/client';
 
 interface SettingsDashboardProps {
   user: User;
@@ -30,6 +31,7 @@ export default function SettingsDashboard({ user, profile }: SettingsDashboardPr
   const [activeSection, setActiveSection] = useState('profile');
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   
   // Profile form
   const [fullName, setFullName] = useState(profile?.full_name || user.user_metadata?.full_name || '');
@@ -60,11 +62,76 @@ export default function SettingsDashboard({ user, profile }: SettingsDashboardPr
 
   const handleSave = async () => {
     setSaving(true);
-    // Simulate save
-    await new Promise(r => setTimeout(r, 1000));
-    setSaving(false);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
+    setError(null);
+    
+    try {
+      const supabase = createClient();
+      
+      // Update user profile in the database
+      const { error: updateError } = await supabase
+        .from('users')
+        .update({
+          full_name: fullName,
+          bio: bio,
+          website: website,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', user.id);
+      
+      if (updateError) {
+        console.error('Error updating profile:', updateError);
+        setError(updateError.message);
+        setSaving(false);
+        return;
+      }
+      
+      // Also update auth metadata
+      await supabase.auth.updateUser({
+        data: { full_name: fullName }
+      });
+      
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    } catch (err) {
+      console.error('Error saving settings:', err);
+      setError('Failed to save settings. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
+  
+  const handlePasswordChange = async () => {
+    if (!newPassword || newPassword.length < 8) {
+      setError('Password must be at least 8 characters');
+      return;
+    }
+    
+    setSaving(true);
+    setError(null);
+    
+    try {
+      const supabase = createClient();
+      
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: newPassword
+      });
+      
+      if (updateError) {
+        setError(updateError.message);
+        setSaving(false);
+        return;
+      }
+      
+      setNewPassword('');
+      setCurrentPassword('');
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    } catch (err) {
+      console.error('Error changing password:', err);
+      setError('Failed to change password. Please try again.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
