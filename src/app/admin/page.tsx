@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "../../../supabase/server";
-import AdminDashboard from "@/components/admin-dashboard";
+import AdminDashboardEnhanced from "@/components/admin-dashboard-enhanced";
 import DashboardNavbar from "@/components/dashboard-navbar";
 
 // List of admin emails (in production, use database roles)
@@ -36,7 +36,7 @@ export default async function AdminPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <DashboardNavbar />
-      <AdminDashboard 
+      <AdminDashboardEnhanced 
         user={user}
         stats={{
           totalContent: content?.length || 0,

@@ -124,6 +124,16 @@ export default function PaymentModal({ content, onClose }: PaymentModalProps) {
       } catch {
         // Function might not exist, continue anyway
       }
+
+      // Log activity
+      await supabase.from('activity_logs').insert({
+        user_id: user.id,
+        action_type: 'payment_completed',
+        entity_type: 'content',
+        entity_id: content.id,
+        description: `Purchased access to: ${content.title}`,
+        metadata: { amount_cents: content.price, session_duration: content.sessionDuration }
+      });
       
       setIsSuccess(true);
       

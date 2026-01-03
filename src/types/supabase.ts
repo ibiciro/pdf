@@ -14,6 +14,98 @@ export type Database = {
   }
   public: {
     Tables: {
+      activity_logs: {
+        Row: {
+          action_type: string
+          created_at: string | null
+          description: string | null
+          entity_id: string | null
+          entity_type: string | null
+          id: string
+          ip_address: string | null
+          metadata: Json | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action_type: string
+          created_at?: string | null
+          description?: string | null
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          ip_address?: string | null
+          metadata?: Json | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action_type?: string
+          created_at?: string | null
+          description?: string | null
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          ip_address?: string | null
+          metadata?: Json | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      analytics_daily: {
+        Row: {
+          active_sessions: number | null
+          avg_session_duration_seconds: number | null
+          created_at: string | null
+          date: string
+          id: string
+          new_users: number | null
+          page_views: number | null
+          top_content_id: string | null
+          total_purchases: number | null
+          total_revenue_cents: number | null
+          total_visitors: number | null
+          unique_visitors: number | null
+        }
+        Insert: {
+          active_sessions?: number | null
+          avg_session_duration_seconds?: number | null
+          created_at?: string | null
+          date: string
+          id?: string
+          new_users?: number | null
+          page_views?: number | null
+          top_content_id?: string | null
+          total_purchases?: number | null
+          total_revenue_cents?: number | null
+          total_visitors?: number | null
+          unique_visitors?: number | null
+        }
+        Update: {
+          active_sessions?: number | null
+          avg_session_duration_seconds?: number | null
+          created_at?: string | null
+          date?: string
+          id?: string
+          new_users?: number | null
+          page_views?: number | null
+          top_content_id?: string | null
+          total_purchases?: number | null
+          total_revenue_cents?: number | null
+          total_visitors?: number | null
+          unique_visitors?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "analytics_daily_top_content_id_fkey"
+            columns: ["top_content_id"]
+            isOneToOne: false
+            referencedRelation: "content"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       categories: {
         Row: {
           created_at: string
@@ -210,6 +302,53 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notifications: {
+        Row: {
+          content_id: string | null
+          created_at: string | null
+          id: string
+          is_read: boolean | null
+          message: string
+          metadata: Json | null
+          related_user_id: string | null
+          title: string
+          type: string
+          user_id: string | null
+        }
+        Insert: {
+          content_id?: string | null
+          created_at?: string | null
+          id?: string
+          is_read?: boolean | null
+          message: string
+          metadata?: Json | null
+          related_user_id?: string | null
+          title: string
+          type: string
+          user_id?: string | null
+        }
+        Update: {
+          content_id?: string | null
+          created_at?: string | null
+          id?: string
+          is_read?: boolean | null
+          message?: string
+          metadata?: Json | null
+          related_user_id?: string | null
+          title?: string
+          type?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_content_id_fkey"
+            columns: ["content_id"]
+            isOneToOne: false
+            referencedRelation: "content"
             referencedColumns: ["id"]
           },
         ]
@@ -427,42 +566,102 @@ export type Database = {
       users: {
         Row: {
           avatar_url: string | null
+          bio: string | null
           created_at: string
           email: string | null
           full_name: string | null
           id: string
           image: string | null
+          is_verified: boolean | null
           name: string | null
           role: string | null
           token_identifier: string
+          total_earnings_cents: number | null
+          total_purchases: number | null
           updated_at: string | null
           user_id: string | null
         }
         Insert: {
           avatar_url?: string | null
+          bio?: string | null
           created_at?: string
           email?: string | null
           full_name?: string | null
           id: string
           image?: string | null
+          is_verified?: boolean | null
           name?: string | null
           role?: string | null
           token_identifier: string
+          total_earnings_cents?: number | null
+          total_purchases?: number | null
           updated_at?: string | null
           user_id?: string | null
         }
         Update: {
           avatar_url?: string | null
+          bio?: string | null
           created_at?: string
           email?: string | null
           full_name?: string | null
           id?: string
           image?: string | null
+          is_verified?: boolean | null
           name?: string | null
           role?: string | null
           token_identifier?: string
+          total_earnings_cents?: number | null
+          total_purchases?: number | null
           updated_at?: string | null
           user_id?: string | null
+        }
+        Relationships: []
+      }
+      website_visitors: {
+        Row: {
+          browser: string | null
+          country: string | null
+          created_at: string | null
+          device_type: string | null
+          duration_seconds: number | null
+          id: string
+          ip_hash: string | null
+          page_path: string
+          referrer: string | null
+          session_id: string | null
+          user_agent: string | null
+          user_id: string | null
+          visitor_id: string
+        }
+        Insert: {
+          browser?: string | null
+          country?: string | null
+          created_at?: string | null
+          device_type?: string | null
+          duration_seconds?: number | null
+          id?: string
+          ip_hash?: string | null
+          page_path: string
+          referrer?: string | null
+          session_id?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+          visitor_id: string
+        }
+        Update: {
+          browser?: string | null
+          country?: string | null
+          created_at?: string | null
+          device_type?: string | null
+          duration_seconds?: number | null
+          id?: string
+          ip_hash?: string | null
+          page_path?: string
+          referrer?: string | null
+          session_id?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+          visitor_id?: string
         }
         Relationships: []
       }
@@ -471,6 +670,18 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_notification: {
+        Args: {
+          p_content_id?: string
+          p_message: string
+          p_metadata?: Json
+          p_related_user_id?: string
+          p_title: string
+          p_type: string
+          p_user_id: string
+        }
+        Returns: string
+      }
       get_content_avg_rating: {
         Args: { content_uuid: string }
         Returns: number
@@ -486,6 +697,29 @@ export type Database = {
       get_quality_rating_counts: {
         Args: { content_uuid: string }
         Returns: Json
+      }
+      log_activity: {
+        Args: {
+          p_action_type: string
+          p_description?: string
+          p_entity_id?: string
+          p_entity_type?: string
+          p_metadata?: Json
+          p_user_id: string
+        }
+        Returns: string
+      }
+      track_page_visit: {
+        Args: {
+          p_device_type?: string
+          p_page_path: string
+          p_referrer?: string
+          p_session_id?: string
+          p_user_agent?: string
+          p_user_id?: string
+          p_visitor_id: string
+        }
+        Returns: string
       }
     }
     Enums: {
