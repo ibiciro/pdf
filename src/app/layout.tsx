@@ -4,12 +4,13 @@ import "./globals.css";
 import Script from "next/script";
 import { TempoInit } from "@/components/tempo-init";
 import { ThemeProvider } from "@/components/theme-provider";
+import VisitorTracker from "@/components/visitor-tracker";
 
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Tempo - Modern SaaS Starter",
-  description: "A modern full-stack starter template powered by Next.js",
+  title: "PayPerRead - Premium Content Monetization",
+  description: "Monetize your written content and PDFs through timed, pay-per-session reading experiences",
 };
 
 export default function RootLayout({
@@ -28,6 +29,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           {children}
+          <VisitorTracker />
         </ThemeProvider>
         <TempoInit />
       </body>

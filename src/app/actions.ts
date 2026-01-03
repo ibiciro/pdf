@@ -61,6 +61,16 @@ export const createContentAction = async (data: ContentFormData) => {
     return { error: error.message };
   }
 
+  // Log activity
+  await supabase.from('activity_logs').insert({
+    user_id: user.id,
+    action_type: 'content_create',
+    entity_type: 'content',
+    entity_id: content.id,
+    description: `Created content: ${data.title}`,
+    metadata: { content_type: data.content_type, status: data.status }
+  });
+
   revalidatePath('/dashboard');
   revalidatePath('/browse');
   
@@ -887,6 +897,459 @@ export const updatePaymentGatewayAction = async (
   revalidatePath('/admin');
   
   return { success: true };
+};
+
+// ============== NOTIFICATION ACTIONS ==============
+
+export interface NotificationData {
+  userId: string;
+  type: 'purchase' | 'review' | 'like' | 'session_start' | 'session_end' | 'content_published' | 'earning' | 'download' | 'new_follower' | 'system';
+  title: string;
+  message: string;
+  contentId?: string;
+  relatedUserId?: string;
+  metadata?: Record<string, any>;
+}
+
+export const createNotificationAction = async (data: NotificationData) => {
+  const supabase = await createClient();
+  
+  const { data: notification, error } = await supabase
+    .from('notifications')
+    .insert({
+      user_id: data.userId,
+      type: data.type,
+      title: data.title,
+      message: data.message,
+      content_id: data.contentId || null,
+      related_user_id: data.relatedUserId || null,
+      metadata: data.metadata || {},
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error creating notification:', error);
+    return { error: error.message };
+  }
+
+  return { success: true, notification };
+};
+
+export const getUserNotificationsAction = async (limit: number = 20) => {
+  const supabase = await createClient();
+  
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  if (!user) {
+    return { error: "Not authenticated", notifications: [] };
+  }
+
+  const { data: notifications, error } = await supabase
+    .from('notifications')
+    .select('*')
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    console.error('Error fetching notifications:', error);
+    return { error: error.message, notifications: [] };
+  }
+
+  return { notifications: notifications || [] };
+};
+
+export const markNotificationReadAction = async (notificationId: string) => {
+  const supabase = await createClient();
+  
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  if (!user) {
+    return { error: "Not authenticated" };
+  }
+
+  const { error } = await supabase
+    .from('notifications')
+    .update({ is_read: true })
+    .eq('id', notificationId)
+    .eq('user_id', user.id);
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  return { success: true };
+};
+
+export const markAllNotificationsReadAction = async () => {
+  const supabase = await createClient();
+  
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  if (!user) {
+    return { error: "Not authenticated" };
+  }
+
+  const { error } = await supabase
+    .from('notifications')
+    .update({ is_read: true })
+    .eq('user_id', user.id)
+    .eq('is_read', false);
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  revalidatePath('/dashboard');
+  return { success: true };
+};
+
+export const getUnreadNotificationCountAction = async () => {
+  const supabase = await createClient();
+  
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  if (!user) {
+    return { count: 0 };
+  }
+
+  const { count, error } = await supabase
+    .from('notifications')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', user.id)
+    .eq('is_read', false);
+
+  if (error) {
+    return { count: 0 };
+  }
+
+  return { count: count || 0 };
+};
+
+// ============== VISITOR TRACKING ACTIONS ==============
+
+export const trackPageVisitAction = async (data: {
+  visitorId: string;
+  pagePath: string;
+  referrer?: string;
+  userAgent?: string;
+  deviceType?: 'desktop' | 'mobile' | 'tablet' | 'unknown';
+  sessionId?: string;
+}) => {
+  const supabase = await createClient();
+  
+  const { data: { user } } = await supabase.auth.getUser();
+
+  const { error } = await supabase
+    .from('website_visitors')
+    .insert({
+      visitor_id: data.visitorId,
+      page_path: data.pagePath,
+      user_id: user?.id || null,
+      referrer: data.referrer || null,
+      user_agent: data.userAgent || null,
+      device_type: data.deviceType || 'unknown',
+      session_id: data.sessionId || null,
+    });
+
+  if (error) {
+    console.error('Error tracking visit:', error);
+    return { error: error.message };
+  }
+
+  return { success: true };
+};
+
+// ============== ACTIVITY LOG ACTIONS ==============
+
+export const logActivityAction = async (data: {
+  actionType: string;
+  entityType?: string;
+  entityId?: string;
+  description?: string;
+  metadata?: Record<string, any>;
+}) => {
+  const supabase = await createClient();
+  
+  const { data: { user } } = await supabase.auth.getUser();
+
+  const { error } = await supabase
+    .from('activity_logs')
+    .insert({
+      user_id: user?.id || null,
+      action_type: data.actionType,
+      entity_type: data.entityType || null,
+      entity_id: data.entityId || null,
+      description: data.description || null,
+      metadata: data.metadata || {},
+    });
+
+  if (error) {
+    console.error('Error logging activity:', error);
+  }
+
+  return { success: !error };
+};
+
+// ============== ENHANCED ADMIN ACTIONS ==============
+
+export const getAdminUsersAction = async () => {
+  const supabase = await createClient();
+  
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  if (!user) {
+    return { error: "Not authenticated", users: [] };
+  }
+
+  // Verify admin status
+  const { data: allUsers } = await supabase
+    .from('users')
+    .select('id')
+    .order('created_at', { ascending: true })
+    .limit(1);
+  
+  const isFirstUser = allUsers?.[0]?.id === user.id;
+
+  const { data: adminUser } = await supabase
+    .from('admin_users')
+    .select('role')
+    .eq('user_id', user.id)
+    .single();
+
+  if (!adminUser && !isFirstUser) {
+    return { error: "Unauthorized", users: [] };
+  }
+
+  const { data: users, error } = await supabase
+    .from('users')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching users:', error);
+    return { error: error.message, users: [] };
+  }
+
+  return { users: users || [] };
+};
+
+export const getAdminContentAction = async () => {
+  const supabase = await createClient();
+  
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  if (!user) {
+    return { error: "Not authenticated", content: [] };
+  }
+
+  // Verify admin status
+  const { data: allUsers } = await supabase
+    .from('users')
+    .select('id')
+    .order('created_at', { ascending: true })
+    .limit(1);
+  
+  const isFirstUser = allUsers?.[0]?.id === user.id;
+
+  const { data: adminUser } = await supabase
+    .from('admin_users')
+    .select('role')
+    .eq('user_id', user.id)
+    .single();
+
+  if (!adminUser && !isFirstUser) {
+    return { error: "Unauthorized", content: [] };
+  }
+
+  const { data: content, error } = await supabase
+    .from('content')
+    .select(`
+      *,
+      creator:creator_id (
+        id,
+        full_name,
+        email
+      )
+    `)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching content:', error);
+    return { error: error.message, content: [] };
+  }
+
+  return { content: content || [] };
+};
+
+export const getAdminTransactionsAction = async () => {
+  const supabase = await createClient();
+  
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  if (!user) {
+    return { error: "Not authenticated", transactions: [] };
+  }
+
+  // Verify admin status
+  const { data: allUsers } = await supabase
+    .from('users')
+    .select('id')
+    .order('created_at', { ascending: true })
+    .limit(1);
+  
+  const isFirstUser = allUsers?.[0]?.id === user.id;
+
+  const { data: adminUser } = await supabase
+    .from('admin_users')
+    .select('role')
+    .eq('user_id', user.id)
+    .single();
+
+  if (!adminUser && !isFirstUser) {
+    return { error: "Unauthorized", transactions: [] };
+  }
+
+  const { data: transactions, error } = await supabase
+    .from('reading_sessions')
+    .select(`
+      *,
+      reader:reader_id (
+        id,
+        full_name,
+        email
+      ),
+      content:content_id (
+        id,
+        title,
+        creator_id
+      )
+    `)
+    .order('created_at', { ascending: false })
+    .limit(100);
+
+  if (error) {
+    console.error('Error fetching transactions:', error);
+    return { error: error.message, transactions: [] };
+  }
+
+  return { transactions: transactions || [] };
+};
+
+export const getAdminVisitorStatsAction = async (days: number = 30) => {
+  const supabase = await createClient();
+  
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  if (!user) {
+    return { error: "Not authenticated", stats: null };
+  }
+
+  // Verify admin status
+  const { data: allUsers } = await supabase
+    .from('users')
+    .select('id')
+    .order('created_at', { ascending: true })
+    .limit(1);
+  
+  const isFirstUser = allUsers?.[0]?.id === user.id;
+
+  const { data: adminUser } = await supabase
+    .from('admin_users')
+    .select('role')
+    .eq('user_id', user.id)
+    .single();
+
+  if (!adminUser && !isFirstUser) {
+    return { error: "Unauthorized", stats: null };
+  }
+
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - days);
+
+  const { data: visitors, error } = await supabase
+    .from('website_visitors')
+    .select('*')
+    .gte('created_at', startDate.toISOString())
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching visitors:', error);
+    return { error: error.message, stats: null };
+  }
+
+  const uniqueVisitors = new Set(visitors?.map(v => v.visitor_id)).size;
+  const totalPageViews = visitors?.length || 0;
+  const desktopVisits = visitors?.filter(v => v.device_type === 'desktop').length || 0;
+  const mobileVisits = visitors?.filter(v => v.device_type === 'mobile').length || 0;
+  const tabletVisits = visitors?.filter(v => v.device_type === 'tablet').length || 0;
+
+  const pageViews: Record<string, number> = {};
+  visitors?.forEach(v => {
+    pageViews[v.page_path] = (pageViews[v.page_path] || 0) + 1;
+  });
+
+  const topPages = Object.entries(pageViews)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 10)
+    .map(([path, views]) => ({ path, views }));
+
+  return {
+    stats: {
+      uniqueVisitors,
+      totalPageViews,
+      deviceBreakdown: {
+        desktop: desktopVisits,
+        mobile: mobileVisits,
+        tablet: tabletVisits,
+      },
+      topPages,
+      recentVisitors: visitors?.slice(0, 20) || [],
+    }
+  };
+};
+
+export const getAdminActivityLogsAction = async (limit: number = 50) => {
+  const supabase = await createClient();
+  
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  if (!user) {
+    return { error: "Not authenticated", logs: [] };
+  }
+
+  // Verify admin status
+  const { data: allUsers } = await supabase
+    .from('users')
+    .select('id')
+    .order('created_at', { ascending: true })
+    .limit(1);
+  
+  const isFirstUser = allUsers?.[0]?.id === user.id;
+
+  const { data: adminUser } = await supabase
+    .from('admin_users')
+    .select('role')
+    .eq('user_id', user.id)
+    .single();
+
+  if (!adminUser && !isFirstUser) {
+    return { error: "Unauthorized", logs: [] };
+  }
+
+  const { data: logs, error } = await supabase
+    .from('activity_logs')
+    .select('*')
+    .order('created_at', { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    console.error('Error fetching activity logs:', error);
+    return { error: error.message, logs: [] };
+  }
+
+  return { logs: logs || [] };
 };
 
 export const getAdminStatsAction = async () => {

@@ -10,14 +10,16 @@ import {
   Plus,
   LogOut,
   Shield,
-  Sparkles
+  Sparkles,
+  Bell
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
 interface DashboardSidebarProps {
   user: User;
-  activeTab: string;
+  activeTab?: string;
+  activePage?: string;
 }
 
 const sidebarItems = [
@@ -25,11 +27,13 @@ const sidebarItems = [
   { icon: FileText, label: 'My Content', key: 'content', href: '/dashboard' },
   { icon: BarChart3, label: 'Analytics', key: 'analytics', href: '/dashboard/analytics' },
   { icon: DollarSign, label: 'Earnings', key: 'earnings', href: '/dashboard/earnings' },
+  { icon: Bell, label: 'Notifications', key: 'notifications', href: '/dashboard/notifications' },
   { icon: Settings, label: 'Settings', key: 'settings', href: '/dashboard/settings' },
   { icon: Shield, label: 'Admin Panel', key: 'admin', href: '/admin', isAdmin: true },
 ];
 
-export default function DashboardSidebar({ user, activeTab }: DashboardSidebarProps) {
+export default function DashboardSidebar({ user, activeTab, activePage }: DashboardSidebarProps) {
+  const currentPage = activePage || activeTab;
   const router = useRouter();
 
   return (
@@ -59,7 +63,7 @@ export default function DashboardSidebar({ user, activeTab }: DashboardSidebarPr
       {/* Navigation */}
       <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
         {sidebarItems.map((item) => {
-          const isActive = activeTab === item.key;
+          const isActive = currentPage === item.key;
           const isAdminItem = (item as any).isAdmin;
           
           // Show admin link styled differently
