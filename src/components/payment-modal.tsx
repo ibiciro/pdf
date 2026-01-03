@@ -15,7 +15,7 @@ interface PaymentModalProps {
   onClose: () => void;
 }
 
-type PaymentMethod = 'card' | 'paystack' | 'flutterwave' | 'momo' | 'demo';
+type PaymentMethod = 'card' | 'paypal' | 'paystack' | 'flutterwave' | 'momo' | 'demo';
 
 export default function PaymentModal({ content, onClose }: PaymentModalProps) {
   const router = useRouter();
@@ -284,6 +284,34 @@ export default function PaymentModal({ content, onClose }: PaymentModalProps) {
                       selectedMethod === 'paystack' ? 'border-teal-600' : 'border-gray-300'
                     }`}>
                       {selectedMethod === 'paystack' && <div className="w-2.5 h-2.5 rounded-full bg-teal-600" />}
+                    </div>
+                  </label>
+                )}
+                
+                {/* PayPal Option */}
+                {availableGateways.includes('paypal') && (
+                  <label 
+                    className={`flex items-center gap-4 p-4 rounded-xl cursor-pointer transition-all border-2 ${
+                      selectedMethod === 'paypal' 
+                        ? 'bg-blue-50 border-blue-200' 
+                        : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
+                    }`}
+                    onClick={() => setSelectedMethod('paypal' as PaymentMethod)}
+                  >
+                    <input type="radio" name="payment" checked={selectedMethod === 'paypal'} onChange={() => {}} className="sr-only" />
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                      selectedMethod === 'paypal' ? 'bg-blue-100' : 'bg-gray-200'
+                    }`}>
+                      <Wallet className={`w-5 h-5 ${selectedMethod === 'paypal' ? 'text-blue-600' : 'text-gray-500'}`} />
+                    </div>
+                    <div className="flex-1">
+                      <div className="font-medium text-gray-900">PayPal</div>
+                      <div className="text-sm text-gray-500">PayPal balance, cards, bank</div>
+                    </div>
+                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                      selectedMethod === 'paypal' ? 'border-blue-600' : 'border-gray-300'
+                    }`}>
+                      {selectedMethod === 'paypal' && <div className="w-2.5 h-2.5 rounded-full bg-blue-600" />}
                     </div>
                   </label>
                 )}

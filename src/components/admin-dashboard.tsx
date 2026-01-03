@@ -24,10 +24,12 @@ import {
   AlertTriangle,
   TrendingUp,
   BarChart3,
-  Clock
+  Clock,
+  Wallet
 } from 'lucide-react';
 import Link from 'next/link';
 import { DEFAULT_GATEWAYS, PaymentGateway, PaymentGatewayConfig } from '@/lib/payment-gateways';
+import { createClient } from '../../supabase/client';
 
 interface AdminDashboardProps {
   user: User;
@@ -44,6 +46,8 @@ export default function AdminDashboard({ user, stats, gatewaySettings }: AdminDa
   const [activeSection, setActiveSection] = useState<'overview' | 'gateways' | 'users' | 'content' | 'security'>('overview');
   const [editingGateway, setEditingGateway] = useState<PaymentGateway | null>(null);
   const [saving, setSaving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [showSecrets, setShowSecrets] = useState<Record<string, boolean>>({});
 
   // Initialize gateway configurations from database or defaults
@@ -65,21 +69,64 @@ export default function AdminDashboard({ user, stats, gatewaySettings }: AdminDa
   const [gatewaySecrets, setGatewaySecrets] = useState<Record<string, string>>({});
 
   const handleToggleGateway = async (gateway: PaymentGateway) => {
+    const supabase = createClient();
+    const newState = !gateways[gateway].isEnabled;
+    
+    // Update local state immediately
     setGateways(prev => ({
       ...prev,
       [gateway]: {
         ...prev[gateway],
-        isEnabled: !prev[gateway].isEnabled,
+        isEnabled: newState,
       },
     }));
+    
+    // Persist to database
+    try {
+      await supabase
+        .from('payment_gateway_settings')
+        .upsert({
+          gateway_id: gateway,
+          is_enabled: newState,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'gateway_id' });
+    } catch (error) {
+      console.error('Error toggling gateway:', error);
+    }
   };
 
   const handleSaveGateway = async (gateway: PaymentGateway) => {
     setSaving(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    setEditingGateway(null);
-    setSaving(false);
+    setSaveError(null);
+    setSaveSuccess(null);
+    
+    try {
+      const supabase = createClient();
+      
+      // Save gateway settings
+      const { error } = await supabase
+        .from('payment_gateway_settings')
+        .upsert({
+          gateway_id: gateway,
+          is_enabled: gateways[gateway].isEnabled,
+          public_key: gateways[gateway].publicKey,
+          webhook_secret: gatewaySecrets[gateway] || null,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'gateway_id' });
+      
+      if (error) {
+        throw error;
+      }
+      
+      setSaveSuccess(gateway);
+      setTimeout(() => setSaveSuccess(null), 3000);
+    } catch (error: any) {
+      console.error('Error saving gateway:', error);
+      setSaveError(error.message || 'Failed to save settings');
+    } finally {
+      setEditingGateway(null);
+      setSaving(false);
+    }
   };
 
   const sidebarItems = [

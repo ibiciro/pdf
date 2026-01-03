@@ -5,6 +5,7 @@
 
 export type PaymentGateway = 
   | 'stripe'
+  | 'paypal'
   | 'paystack'
   | 'flutterwave'
   | 'alipay'
@@ -51,6 +52,17 @@ export const DEFAULT_GATEWAYS: Record<PaymentGateway, Omit<PaymentGatewayConfig,
     minAmount: 50, // cents
     maxAmount: 99999999,
     fees: { percentage: 2.9, fixed: 30, currency: 'USD' },
+  },
+  paypal: {
+    id: 'paypal',
+    name: 'PayPal',
+    description: 'PayPal balance, cards, bank accounts',
+    logo: 'https://upload.wikimedia.org/wikipedia/commons/b/b5/PayPal.svg',
+    supportedCurrencies: ['USD', 'EUR', 'GBP', 'CAD', 'AUD', 'JPY', 'CHF', 'SEK', 'NOK', 'DKK', 'PLN', 'HUF', 'CZK', 'BRL', 'MXN', 'SGD', 'HKD', 'NZD', 'PHP', 'TWD', 'THB', 'ILS', 'MYR'],
+    supportedCountries: ['US', 'CA', 'GB', 'AU', 'DE', 'FR', 'IT', 'ES', 'NL', 'BE', 'AT', 'PT', 'IE', 'CH', 'SE', 'NO', 'DK', 'FI', 'PL', 'HU', 'CZ', 'BR', 'MX', 'SG', 'HK', 'NZ', 'PH', 'TW', 'TH', 'IL', 'MY'],
+    minAmount: 100, // cents
+    maxAmount: 1000000000,
+    fees: { percentage: 3.49, fixed: 49, currency: 'USD' },
   },
   paystack: {
     id: 'paystack',

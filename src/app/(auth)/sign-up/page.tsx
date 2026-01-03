@@ -7,7 +7,7 @@ import { SmtpMessage } from "../smtp-message";
 import { signUpAction } from "@/app/actions";
 import Navbar from "@/components/navbar";
 import { UrlProvider } from "@/components/url-provider";
-import { BookOpen } from "lucide-react";
+import { BookOpen, CheckCircle, Zap, Shield, DollarSign } from "lucide-react";
 
 export default async function Signup(props: {
   searchParams: Promise<Message>;
@@ -22,99 +22,132 @@ export default async function Signup(props: {
   }
 
   return (
-    <div className="min-h-screen bg-white relative overflow-hidden">
-      {/* Background effects */}
-      <div className="absolute inset-0">
-        <div className="absolute top-1/4 right-1/4 w-96 h-96 bg-purple-500 rounded-full filter blur-[128px] opacity-20" />
-        <div className="absolute bottom-1/4 left-1/4 w-96 h-96 bg-cyan-500 rounded-full filter blur-[128px] opacity-20" />
-      </div>
-      
+    <div className="min-h-screen bg-gray-50">
       <Navbar />
       
-      <div className="relative flex min-h-screen flex-col items-center justify-center px-4 py-8 pt-24">
-        <div className="w-full max-w-md glass-strong rounded-2xl p-8">
-          {/* Logo */}
-          <div className="flex justify-center mb-8">
-            <Link href="/" className="flex items-center gap-2">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-400 to-purple-500 flex items-center justify-center glow-cyan">
-                <BookOpen className="w-6 h-6 text-white" />
-              </div>
-            </Link>
+      <div className="flex min-h-screen pt-16">
+        {/* Left side - Benefits */}
+        <div className="hidden lg:flex flex-1 bg-gray-900 p-12 flex-col justify-center">
+          <div className="max-w-md">
+            <h2 className="text-3xl font-bold text-white mb-6">
+              Start monetizing your content today
+            </h2>
+            <p className="text-gray-400 mb-10">
+              Join thousands of creators who earn from their knowledge.
+            </p>
+            
+            <div className="space-y-6">
+              {[
+                { icon: <DollarSign className="w-5 h-5" />, title: 'Instant Payouts', desc: 'Get paid immediately when readers access your content' },
+                { icon: <Shield className="w-5 h-5" />, title: 'Protected Content', desc: 'Your content is secure from copying and piracy' },
+                { icon: <Zap className="w-5 h-5" />, title: 'Easy Setup', desc: 'Upload and start earning in under 5 minutes' },
+              ].map((item, i) => (
+                <div key={i} className="flex items-start gap-4">
+                  <div className="w-10 h-10 rounded-lg bg-white/10 flex items-center justify-center text-white flex-shrink-0">
+                    {item.icon}
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-white">{item.title}</h3>
+                    <p className="text-sm text-gray-400">{item.desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
-          
-          <UrlProvider>
-            <form className="flex flex-col space-y-6">
-              <div className="space-y-2 text-center">
-                <h1 className="text-3xl font-bold text-white font-display">Create Account</h1>
-                <p className="text-sm text-gray-400">
-                  Already have an account?{" "}
-                  <Link
-                    className="text-cyan-400 font-medium hover:text-cyan-300 transition-all"
-                    href="/sign-in"
-                  >
-                    Sign in
-                  </Link>
-                </p>
-              </div>
-
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="full_name" className="text-sm font-medium text-gray-300">
-                    Full Name
-                  </Label>
-                  <Input
-                    id="full_name"
-                    name="full_name"
-                    type="text"
-                    placeholder="John Doe"
-                    required
-                    className="w-full glass border-white/10 bg-white/5 text-white placeholder-gray-500 focus:border-cyan-400/50 focus:ring-cyan-400/20"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="email" className="text-sm font-medium text-gray-300">
-                    Email
-                  </Label>
-                  <Input
-                    id="email"
-                    name="email"
-                    type="email"
-                    placeholder="you@example.com"
-                    required
-                    className="w-full glass border-white/10 bg-white/5 text-white placeholder-gray-500 focus:border-cyan-400/50 focus:ring-cyan-400/20"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="password" className="text-sm font-medium text-gray-300">
-                    Password
-                  </Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    name="password"
-                    placeholder="Your password"
-                    minLength={6}
-                    required
-                    className="w-full glass border-white/10 bg-white/5 text-white placeholder-gray-500 focus:border-cyan-400/50 focus:ring-cyan-400/20"
-                  />
-                </div>
-              </div>
-
-              <SubmitButton
-                formAction={signUpAction}
-                pendingText="Signing up..."
-                className="w-full btn-glow py-3 rounded-xl text-white font-semibold"
-              >
-                Sign up
-              </SubmitButton>
-
-              <FormMessage message={searchParams} />
-            </form>
-          </UrlProvider>
         </div>
-        <SmtpMessage />
+        
+        {/* Right side - Form */}
+        <div className="flex-1 flex items-center justify-center p-8">
+          <div className="w-full max-w-md">
+            {/* Logo */}
+            <div className="flex justify-center mb-8">
+              <Link href="/" className="flex items-center gap-2">
+                <div className="w-10 h-10 rounded-xl bg-gray-900 flex items-center justify-center">
+                  <BookOpen className="w-5 h-5 text-white" />
+                </div>
+                <span className="font-bold text-xl text-gray-900">PayPerRead</span>
+              </Link>
+            </div>
+            
+            <UrlProvider>
+              <form className="flex flex-col space-y-6">
+                <div className="space-y-2 text-center">
+                  <h1 className="text-2xl font-bold text-gray-900">Create your account</h1>
+                  <p className="text-sm text-gray-500">
+                    Already have an account?{" "}
+                    <Link
+                      className="text-gray-900 font-medium hover:underline"
+                      href="/sign-in"
+                    >
+                      Sign in
+                    </Link>
+                  </p>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="full_name" className="text-sm font-medium text-gray-700">
+                      Full Name
+                    </Label>
+                    <Input
+                      id="full_name"
+                      name="full_name"
+                      type="text"
+                      placeholder="John Doe"
+                      required
+                      className="w-full"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="email" className="text-sm font-medium text-gray-700">
+                      Email
+                    </Label>
+                    <Input
+                      id="email"
+                      name="email"
+                      type="email"
+                      placeholder="you@example.com"
+                      required
+                      className="w-full"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="password" className="text-sm font-medium text-gray-700">
+                      Password
+                    </Label>
+                    <Input
+                      id="password"
+                      type="password"
+                      name="password"
+                      placeholder="Min. 6 characters"
+                      minLength={6}
+                      required
+                      className="w-full"
+                  />
+                </div>
+              </div>
+
+                <SubmitButton
+                  formAction={signUpAction}
+                  pendingText="Creating account..."
+                  className="w-full bg-gray-900 hover:bg-gray-800 text-white py-3 rounded-lg font-semibold transition-colors"
+                >
+                  Create account
+                </SubmitButton>
+
+                <FormMessage message={searchParams} />
+                
+                <p className="text-xs text-gray-500 text-center">
+                  By signing up, you agree to our{' '}
+                  <Link href="/terms" className="underline">Terms</Link> and{' '}
+                  <Link href="/privacy" className="underline">Privacy Policy</Link>
+                </p>
+              </form>
+            </UrlProvider>
+          </div>
+        </div>
       </div>
     </div>
   );

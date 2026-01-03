@@ -80,6 +80,7 @@ CREATE TABLE IF NOT EXISTS public.platform_settings (
 -- Insert default gateway settings
 INSERT INTO public.payment_gateway_settings (gateway_id, is_enabled, fee_percentage, fee_fixed_cents) VALUES
   ('stripe', false, 2.9, 30),
+  ('paypal', false, 3.49, 49),
   ('paystack', false, 1.5, 100),
   ('flutterwave', false, 1.4, 0),
   ('alipay', false, 2.2, 0),

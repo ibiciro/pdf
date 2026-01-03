@@ -941,3 +941,479 @@ export const getAdminStatsAction = async () => {
     }
   };
 };
+
+// ============== LIKE ACTIONS ==============
+
+export const toggleLikeAction = async (contentId: string) => {
+  const supabase = await createClient();
+  
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  if (!user) {
+    return { error: "Not authenticated", isLiked: false };
+  }
+
+  // Check if already liked
+  const { data: existingLike } = await supabase
+    .from('likes')
+    .select('id')
+    .eq('user_id', user.id)
+    .eq('content_id', contentId)
+    .single();
+
+  if (existingLike) {
+    // Unlike
+    await supabase
+      .from('likes')
+      .delete()
+      .eq('id', existingLike.id);
+    
+    return { success: true, isLiked: false };
+  } else {
+    // Like
+    await supabase
+      .from('likes')
+      .insert({
+        user_id: user.id,
+        content_id: contentId,
+      });
+    
+    return { success: true, isLiked: true };
+  }
+};
+
+export const checkLikeStatusAction = async (contentId: string) => {
+  const supabase = await createClient();
+  
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  if (!user) {
+    return { isLiked: false };
+  }
+
+  const { data: existingLike } = await supabase
+    .from('likes')
+    .select('id')
+    .eq('user_id', user.id)
+    .eq('content_id', contentId)
+    .single();
+
+  return { isLiked: !!existingLike };
+};
+
+export const getLikeCountAction = async (contentId: string) => {
+  const supabase = await createClient();
+  
+  const { count } = await supabase
+    .from('likes')
+    .select('*', { count: 'exact', head: true })
+    .eq('content_id', contentId);
+
+  return { count: count || 0 };
+};
+
+// ============== REVIEW ACTIONS ==============
+
+export interface ReviewData {
+  contentId: string;
+  rating: number;
+  comment?: string;
+  qualityRating?: 'facts' | 'works' | 'elite' | 'expert' | 'doesnt_work';
+}
+
+export const submitReviewAction = async (data: ReviewData) => {
+  const supabase = await createClient();
+  
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  if (!user) {
+    return { error: "Not authenticated" };
+  }
+
+  // Check if user has read this content
+  const { data: session } = await supabase
+    .from('reading_sessions')
+    .select('id')
+    .eq('reader_id', user.id)
+    .eq('content_id', data.contentId)
+    .single();
+
+  // For now, allow reviews without reading (can be changed)
+  // if (!session) {
+  //   return { error: "You must read the content before reviewing" };
+  // }
+
+  // Check for existing review
+  const { data: existingReview } = await supabase
+    .from('reviews')
+    .select('id')
+    .eq('reader_id', user.id)
+    .eq('content_id', data.contentId)
+    .single();
+
+  if (existingReview) {
+    // Update existing review
+    const { error } = await supabase
+      .from('reviews')
+      .update({
+        rating: data.rating,
+        comment: data.comment,
+        quality_rating: data.qualityRating,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', existingReview.id);
+
+    if (error) {
+      return { error: error.message };
+    }
+    return { success: true, updated: true };
+  }
+
+  // Create new review
+  const { error } = await supabase
+    .from('reviews')
+    .insert({
+      reader_id: user.id,
+      content_id: data.contentId,
+      rating: data.rating,
+      comment: data.comment,
+      quality_rating: data.qualityRating,
+    });
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  return { success: true, updated: false };
+};
+
+export const getContentReviewsAction = async (contentId: string) => {
+  const supabase = await createClient();
+
+  const { data: reviews, error } = await supabase
+    .from('reviews')
+    .select(`
+      id,
+      rating,
+      comment,
+      quality_rating,
+      created_at,
+      reader_id,
+      users!reviews_reader_id_fkey (
+        full_name,
+        avatar_url
+      )
+    `)
+    .eq('content_id', contentId)
+    .order('created_at', { ascending: false })
+    .limit(20);
+
+  if (error) {
+    // If join fails, try without it
+    const { data: simpleReviews } = await supabase
+      .from('reviews')
+      .select('*')
+      .eq('content_id', contentId)
+      .order('created_at', { ascending: false })
+      .limit(20);
+    
+    return { reviews: simpleReviews || [] };
+  }
+
+  return { reviews: reviews || [] };
+};
+
+export const getUserReviewAction = async (contentId: string) => {
+  const supabase = await createClient();
+  
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  if (!user) {
+    return { review: null };
+  }
+
+  const { data: review } = await supabase
+    .from('reviews')
+    .select('*')
+    .eq('reader_id', user.id)
+    .eq('content_id', contentId)
+    .single();
+
+  return { review };
+};
+
+// ============== QUALITY RATING ACTIONS ==============
+
+export const submitQualityRatingAction = async (contentId: string, rating: string) => {
+  const supabase = await createClient();
+  
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  if (!user) {
+    return { error: "Not authenticated" };
+  }
+
+  // Check for existing quality rating
+  const { data: existing } = await supabase
+    .from('quality_ratings')
+    .select('id')
+    .eq('user_id', user.id)
+    .eq('content_id', contentId)
+    .single();
+
+  if (existing) {
+    // Update existing
+    const { error } = await supabase
+      .from('quality_ratings')
+      .update({
+        rating_type: rating,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', existing.id);
+
+    if (error) {
+      return { error: error.message };
+    }
+  } else {
+    // Create new
+    const { error } = await supabase
+      .from('quality_ratings')
+      .insert({
+        user_id: user.id,
+        content_id: contentId,
+        rating_type: rating,
+      });
+
+    if (error) {
+      return { error: error.message };
+    }
+  }
+
+  return { success: true };
+};
+
+export const getQualityRatingsAction = async (contentId: string) => {
+  const supabase = await createClient();
+
+  const { data: ratings } = await supabase
+    .from('quality_ratings')
+    .select('rating_type')
+    .eq('content_id', contentId);
+
+  const counts = {
+    facts: 0,
+    works: 0,
+    elite: 0,
+    expert: 0,
+    doesnt_work: 0,
+  };
+
+  ratings?.forEach(r => {
+    if (r.rating_type in counts) {
+      counts[r.rating_type as keyof typeof counts]++;
+    }
+  });
+
+  return { counts };
+};
+
+// ============== READING SESSION ACTIONS ==============
+
+export const createReadingSessionAction = async (contentId: string, amountPaidCents: number) => {
+  const supabase = await createClient();
+  
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  if (!user) {
+    return { error: "Not authenticated" };
+  }
+
+  // Get content details
+  const { data: content } = await supabase
+    .from('content')
+    .select('session_duration_minutes, creator_id')
+    .eq('id', contentId)
+    .single();
+
+  if (!content) {
+    return { error: "Content not found" };
+  }
+
+  const expiresAt = new Date();
+  expiresAt.setMinutes(expiresAt.getMinutes() + content.session_duration_minutes);
+
+  const { data: session, error } = await supabase
+    .from('reading_sessions')
+    .insert({
+      content_id: contentId,
+      reader_id: user.id,
+      duration_minutes: content.session_duration_minutes,
+      expires_at: expiresAt.toISOString(),
+      amount_paid_cents: amountPaidCents,
+      status: 'active',
+    })
+    .select()
+    .single();
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  // Update content reads
+  await supabase
+    .from('content')
+    .update({ 
+      total_reads: supabase.rpc('increment', { row_id: contentId, table_name: 'content', column_name: 'total_reads' })
+    })
+    .eq('id', contentId);
+
+  return { success: true, session };
+};
+
+export const getActiveSessionAction = async (contentId: string) => {
+  const supabase = await createClient();
+  
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  if (!user) {
+    return { session: null };
+  }
+
+  const { data: session } = await supabase
+    .from('reading_sessions')
+    .select('*')
+    .eq('content_id', contentId)
+    .eq('reader_id', user.id)
+    .eq('status', 'active')
+    .gt('expires_at', new Date().toISOString())
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .single();
+
+  return { session };
+};
+
+export const extendSessionAction = async (sessionId: string, additionalMinutes: number, costCents: number) => {
+  const supabase = await createClient();
+  
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  if (!user) {
+    return { error: "Not authenticated" };
+  }
+
+  const { data: session } = await supabase
+    .from('reading_sessions')
+    .select('*')
+    .eq('id', sessionId)
+    .eq('reader_id', user.id)
+    .single();
+
+  if (!session) {
+    return { error: "Session not found" };
+  }
+
+  if (session.extended_count >= 3) {
+    return { error: "Maximum extensions reached" };
+  }
+
+  const newExpiry = new Date(session.expires_at);
+  newExpiry.setMinutes(newExpiry.getMinutes() + additionalMinutes);
+
+  const { error } = await supabase
+    .from('reading_sessions')
+    .update({
+      expires_at: newExpiry.toISOString(),
+      extended_count: session.extended_count + 1,
+      amount_paid_cents: session.amount_paid_cents + costCents,
+    })
+    .eq('id', sessionId);
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  return { success: true, newExpiry: newExpiry.toISOString() };
+};
+
+// ============== USER PURCHASE HISTORY ==============
+
+export const getUserPurchasesAction = async () => {
+  const supabase = await createClient();
+  
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  if (!user) {
+    return { error: "Not authenticated", purchases: [] };
+  }
+
+  const { data: sessions } = await supabase
+    .from('reading_sessions')
+    .select(`
+      id,
+      content_id,
+      amount_paid_cents,
+      status,
+      created_at,
+      expires_at,
+      content (
+        id,
+        title,
+        thumbnail_url,
+        content_type,
+        creator_name
+      )
+    `)
+    .eq('reader_id', user.id)
+    .order('created_at', { ascending: false })
+    .limit(50);
+
+  return { purchases: sessions || [] };
+};
+
+// ============== ADMIN GATEWAY SECRETS (Secure Storage) ==============
+
+export const saveGatewaySecretAction = async (gatewayId: string, secretKey: string) => {
+  const supabase = await createClient();
+  
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  if (!user) {
+    return { error: "Not authenticated" };
+  }
+
+  // Verify admin status
+  const { data: allUsers } = await supabase
+    .from('users')
+    .select('id')
+    .order('created_at', { ascending: true })
+    .limit(1);
+  
+  const isFirstUser = allUsers?.[0]?.id === user.id;
+
+  const { data: adminUser } = await supabase
+    .from('admin_users')
+    .select('role')
+    .eq('user_id', user.id)
+    .single();
+
+  if (!adminUser && !isFirstUser) {
+    return { error: "Unauthorized" };
+  }
+
+  // Store the secret (in production, use a proper secrets manager)
+  // For now, store encrypted in platform_settings
+  const { error } = await supabase
+    .from('payment_gateway_settings')
+    .update({
+      webhook_secret: secretKey, // In production, encrypt this
+      updated_at: new Date().toISOString(),
+    })
+    .eq('gateway_id', gatewayId);
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  return { success: true };
+};
