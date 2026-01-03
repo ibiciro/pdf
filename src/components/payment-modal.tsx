@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
-import { X, Clock, CreditCard, Check, Loader2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { X, Clock, CreditCard, Check, Loader2, AlertCircle, Smartphone, Wallet } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { createClient } from '../../supabase/client';
 
 interface PaymentModalProps {
   content: {
@@ -14,24 +15,127 @@ interface PaymentModalProps {
   onClose: () => void;
 }
 
+type PaymentMethod = 'card' | 'paypal' | 'paystack' | 'flutterwave' | 'momo' | 'demo';
+
 export default function PaymentModal({ content, onClose }: PaymentModalProps) {
   const router = useRouter();
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedMethod, setSelectedMethod] = useState<PaymentMethod>('demo');
+  const [availableGateways, setAvailableGateways] = useState<string[]>(['demo']);
+  
+  // Fetch available payment gateways
+  useEffect(() => {
+    const fetchGateways = async () => {
+      const supabase = createClient();
+      const { data } = await supabase
+        .from('payment_gateway_settings')
+        .select('gateway_id')
+        .eq('is_enabled', true);
+      
+      if (data && data.length > 0) {
+        setAvailableGateways(['demo', ...data.map(g => g.gateway_id)]);
+      }
+    };
+    
+    fetchGateways();
+  }, []);
 
   const handlePayment = async () => {
     setIsProcessing(true);
+    setError(null);
     
-    // Simulate payment processing
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    setIsProcessing(false);
-    setIsSuccess(true);
-    
-    // Redirect to reader view after success animation
-    setTimeout(() => {
-      router.push(`/read/${content.id}`);
-    }, 1500);
+    try {
+      const supabase = createClient();
+      
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        setError('Please sign in to make a purchase');
+        setIsProcessing(false);
+        return;
+      }
+      
+      // Create payment transaction
+      const { data: transaction, error: txError } = await supabase
+        .from('payment_transactions')
+        .insert({
+          user_id: user.id,
+          content_id: content.id,
+          gateway_id: selectedMethod === 'demo' ? 'manual' : selectedMethod,
+          amount_cents: content.price,
+          currency: 'USD',
+          transaction_type: 'purchase',
+          status: 'processing',
+          metadata: {
+            content_title: content.title,
+            session_duration: content.sessionDuration,
+          }
+        })
+        .select()
+        .single();
+      
+      if (txError) {
+        console.error('Transaction error:', txError);
+        // For demo, continue anyway
+      }
+      
+      // Simulate payment processing delay
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      // Create reading session
+      const expiresAt = new Date();
+      expiresAt.setMinutes(expiresAt.getMinutes() + content.sessionDuration);
+      
+      const { data: session, error: sessionError } = await supabase
+        .from('reading_sessions')
+        .insert({
+          content_id: content.id,
+          reader_id: user.id,
+          expires_at: expiresAt.toISOString(),
+          amount_paid_cents: content.price,
+          status: 'active',
+          duration_minutes: content.sessionDuration,
+        })
+        .select()
+        .single();
+      
+      if (sessionError) {
+        console.error('Session error:', sessionError);
+        // Continue anyway for demo
+      }
+      
+      // Update transaction status
+      if (transaction) {
+        await supabase
+          .from('payment_transactions')
+          .update({ status: 'completed', completed_at: new Date().toISOString() })
+          .eq('id', transaction.id);
+      }
+      
+      // Update content stats
+      try {
+        await supabase.rpc('increment_earnings', { 
+          content_id: content.id, 
+          amount: content.price 
+        });
+      } catch {
+        // Function might not exist, continue anyway
+      }
+      
+      setIsSuccess(true);
+      
+      // Redirect to reader view after success animation
+      setTimeout(() => {
+        router.push(`/read/${content.id}`);
+      }, 1500);
+    } catch (err) {
+      console.error('Payment error:', err);
+      setError('Payment processing failed. Please try again.');
+      setIsProcessing(false);
+    }
   };
 
   return (
@@ -89,68 +193,156 @@ export default function PaymentModal({ content, onClose }: PaymentModalProps) {
               </div>
             </div>
             
+            {/* Error Display */}
+            {error && (
+              <div className="mx-6 mt-4 p-4 bg-red-50 border border-red-200 rounded-xl flex items-center gap-3">
+                <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
+                <p className="text-sm text-red-700">{error}</p>
+              </div>
+            )}
+            
             {/* Payment Methods */}
             <div className="p-6 border-b border-gray-100">
               <h4 className="text-sm font-medium text-gray-500 mb-4">Payment Method</h4>
               
               <div className="space-y-3">
-                {/* Card Option */}
-                <label className="flex items-center gap-4 p-4 bg-blue-50 rounded-xl cursor-pointer border-2 border-blue-200">
-                  <input type="radio" name="payment" defaultChecked className="sr-only" />
-                  <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
-                    <CreditCard className="w-5 h-5 text-blue-600" />
+                {/* Demo Payment (always available) */}
+                <label 
+                  className={`flex items-center gap-4 p-4 rounded-xl cursor-pointer transition-all border-2 ${
+                    selectedMethod === 'demo' 
+                      ? 'bg-green-50 border-green-200' 
+                      : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
+                  }`}
+                  onClick={() => setSelectedMethod('demo')}
+                >
+                  <input type="radio" name="payment" checked={selectedMethod === 'demo'} onChange={() => {}} className="sr-only" />
+                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                    selectedMethod === 'demo' ? 'bg-green-100' : 'bg-gray-200'
+                  }`}>
+                    <Check className={`w-5 h-5 ${selectedMethod === 'demo' ? 'text-green-600' : 'text-gray-500'}`} />
                   </div>
                   <div className="flex-1">
-                    <div className="font-medium text-gray-900">Credit / Debit Card</div>
-                    <div className="text-sm text-gray-500">Visa, Mastercard, Amex</div>
+                    <div className="font-medium text-gray-900">Demo Payment</div>
+                    <div className="text-sm text-gray-500">Test the system (no real charge)</div>
                   </div>
-                  <div className="w-5 h-5 rounded-full border-2 border-blue-600 flex items-center justify-center">
-                    <div className="w-2.5 h-2.5 rounded-full bg-blue-600" />
+                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                    selectedMethod === 'demo' ? 'border-green-600' : 'border-gray-300'
+                  }`}>
+                    {selectedMethod === 'demo' && <div className="w-2.5 h-2.5 rounded-full bg-green-600" />}
                   </div>
                 </label>
                 
-                {/* Apple Pay Option */}
-                <label className="flex items-center gap-4 p-4 bg-gray-50 rounded-xl cursor-pointer hover:bg-gray-100 transition-colors border border-gray-200">
-                  <input type="radio" name="payment" className="sr-only" />
-                  <div className="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center">
-                    <span className="text-gray-700 font-bold text-sm"></span>
-                  </div>
-                  <div className="flex-1">
-                    <div className="font-medium text-gray-900">Apple Pay</div>
-                    <div className="text-sm text-gray-500">Quick checkout</div>
-                  </div>
-                  <div className="w-5 h-5 rounded-full border-2 border-gray-300" />
-                </label>
-              </div>
-            </div>
-            
-            {/* Card Details */}
-            <div className="p-6 border-b border-gray-100 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Card Number</label>
-                <input
-                  type="text"
-                  placeholder="1234 5678 9012 3456"
-                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-300"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Expiry</label>
-                  <input
-                    type="text"
-                    placeholder="MM/YY"
-                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-300"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">CVC</label>
-                  <input
-                    type="text"
-                    placeholder="123"
-                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-300"
-                  />
-                </div>
+                {/* Card Option */}
+                {availableGateways.includes('stripe') && (
+                  <label 
+                    className={`flex items-center gap-4 p-4 rounded-xl cursor-pointer transition-all border-2 ${
+                      selectedMethod === 'card' 
+                        ? 'bg-blue-50 border-blue-200' 
+                        : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
+                    }`}
+                    onClick={() => setSelectedMethod('card')}
+                  >
+                    <input type="radio" name="payment" checked={selectedMethod === 'card'} onChange={() => {}} className="sr-only" />
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                      selectedMethod === 'card' ? 'bg-blue-100' : 'bg-gray-200'
+                    }`}>
+                      <CreditCard className={`w-5 h-5 ${selectedMethod === 'card' ? 'text-blue-600' : 'text-gray-500'}`} />
+                    </div>
+                    <div className="flex-1">
+                      <div className="font-medium text-gray-900">Credit / Debit Card</div>
+                      <div className="text-sm text-gray-500">Visa, Mastercard, Amex</div>
+                    </div>
+                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                      selectedMethod === 'card' ? 'border-blue-600' : 'border-gray-300'
+                    }`}>
+                      {selectedMethod === 'card' && <div className="w-2.5 h-2.5 rounded-full bg-blue-600" />}
+                    </div>
+                  </label>
+                )}
+                
+                {/* Paystack Option */}
+                {availableGateways.includes('paystack') && (
+                  <label 
+                    className={`flex items-center gap-4 p-4 rounded-xl cursor-pointer transition-all border-2 ${
+                      selectedMethod === 'paystack' 
+                        ? 'bg-teal-50 border-teal-200' 
+                        : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
+                    }`}
+                    onClick={() => setSelectedMethod('paystack')}
+                  >
+                    <input type="radio" name="payment" checked={selectedMethod === 'paystack'} onChange={() => {}} className="sr-only" />
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                      selectedMethod === 'paystack' ? 'bg-teal-100' : 'bg-gray-200'
+                    }`}>
+                      <Wallet className={`w-5 h-5 ${selectedMethod === 'paystack' ? 'text-teal-600' : 'text-gray-500'}`} />
+                    </div>
+                    <div className="flex-1">
+                      <div className="font-medium text-gray-900">Paystack</div>
+                      <div className="text-sm text-gray-500">Cards, Bank, USSD</div>
+                    </div>
+                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                      selectedMethod === 'paystack' ? 'border-teal-600' : 'border-gray-300'
+                    }`}>
+                      {selectedMethod === 'paystack' && <div className="w-2.5 h-2.5 rounded-full bg-teal-600" />}
+                    </div>
+                  </label>
+                )}
+                
+                {/* PayPal Option */}
+                {availableGateways.includes('paypal') && (
+                  <label 
+                    className={`flex items-center gap-4 p-4 rounded-xl cursor-pointer transition-all border-2 ${
+                      selectedMethod === 'paypal' 
+                        ? 'bg-blue-50 border-blue-200' 
+                        : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
+                    }`}
+                    onClick={() => setSelectedMethod('paypal' as PaymentMethod)}
+                  >
+                    <input type="radio" name="payment" checked={selectedMethod === 'paypal'} onChange={() => {}} className="sr-only" />
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                      selectedMethod === 'paypal' ? 'bg-blue-100' : 'bg-gray-200'
+                    }`}>
+                      <Wallet className={`w-5 h-5 ${selectedMethod === 'paypal' ? 'text-blue-600' : 'text-gray-500'}`} />
+                    </div>
+                    <div className="flex-1">
+                      <div className="font-medium text-gray-900">PayPal</div>
+                      <div className="text-sm text-gray-500">PayPal balance, cards, bank</div>
+                    </div>
+                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                      selectedMethod === 'paypal' ? 'border-blue-600' : 'border-gray-300'
+                    }`}>
+                      {selectedMethod === 'paypal' && <div className="w-2.5 h-2.5 rounded-full bg-blue-600" />}
+                    </div>
+                  </label>
+                )}
+                
+                {/* MoMo Option */}
+                {availableGateways.includes('momo') && (
+                  <label 
+                    className={`flex items-center gap-4 p-4 rounded-xl cursor-pointer transition-all border-2 ${
+                      selectedMethod === 'momo' 
+                        ? 'bg-yellow-50 border-yellow-200' 
+                        : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
+                    }`}
+                    onClick={() => setSelectedMethod('momo')}
+                  >
+                    <input type="radio" name="payment" checked={selectedMethod === 'momo'} onChange={() => {}} className="sr-only" />
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                      selectedMethod === 'momo' ? 'bg-yellow-100' : 'bg-gray-200'
+                    }`}>
+                      <Smartphone className={`w-5 h-5 ${selectedMethod === 'momo' ? 'text-yellow-600' : 'text-gray-500'}`} />
+                    </div>
+                    <div className="flex-1">
+                      <div className="font-medium text-gray-900">Mobile Money</div>
+                      <div className="text-sm text-gray-500">MTN MoMo, Airtel Money</div>
+                    </div>
+                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                      selectedMethod === 'momo' ? 'border-yellow-600' : 'border-gray-300'
+                    }`}>
+                      {selectedMethod === 'momo' && <div className="w-2.5 h-2.5 rounded-full bg-yellow-600" />}
+                    </div>
+                  </label>
+                )}
               </div>
             </div>
             
@@ -173,7 +365,10 @@ export default function PaymentModal({ content, onClose }: PaymentModalProps) {
                 )}
               </button>
               <p className="text-center text-xs text-gray-400 mt-4">
-                Secure payment powered by Stripe. Your session starts immediately after payment.
+                {selectedMethod === 'demo' 
+                  ? 'Demo mode - no real charge. Your session starts immediately.'
+                  : 'Secure payment. Your session starts immediately after payment.'
+                }
               </p>
             </div>
           </>

@@ -1,12 +1,13 @@
 'use client';
 
-import { useState } from 'react';
-import { Star, Clock, Eye, Heart, User as UserIcon, Calendar, FileText, ArrowRight, X, Download, Shield, Lock } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Star, Clock, Eye, Heart, User as UserIcon, Calendar, FileText, ArrowRight, X, Download, Shield, Lock, Loader2, ThumbsUp, CheckCircle } from 'lucide-react';
 import { User } from '@supabase/supabase-js';
 import Link from 'next/link';
 import PaymentModal from './payment-modal';
 import SecureDownloadModal from './secure-download-modal';
 import QualityRating, { QualityBadges } from './quality-rating';
+import { createClient } from '../../supabase/client';
 
 interface ContentDetailClientProps {
   content: {
@@ -41,12 +42,55 @@ export default function ContentDetailClient({ content, user }: ContentDetailClie
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showDownloadModal, setShowDownloadModal] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
+  const [likeCount, setLikeCount] = useState(content.likeCount);
+  const [isLiking, setIsLiking] = useState(false);
+  const [hasActiveSession, setHasActiveSession] = useState(false);
+
+  // Check like status and active session on mount
+  useEffect(() => {
+    const checkStatus = async () => {
+      if (!user) return;
+      
+      const supabase = createClient();
+      
+      // Check like status
+      const { data: like } = await supabase
+        .from('likes')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('content_id', content.id)
+        .single();
+      
+      setIsLiked(!!like);
+      
+      // Check for active session
+      const { data: session } = await supabase
+        .from('reading_sessions')
+        .select('id')
+        .eq('reader_id', user.id)
+        .eq('content_id', content.id)
+        .eq('status', 'active')
+        .gt('expires_at', new Date().toISOString())
+        .single();
+      
+      setHasActiveSession(!!session);
+    };
+    
+    checkStatus();
+  }, [user, content.id]);
 
   const handlePayAndRead = () => {
     if (!user) {
       window.location.href = '/sign-in';
       return;
     }
+    
+    // If user has active session, go directly to read
+    if (hasActiveSession) {
+      window.location.href = `/read/${content.id}`;
+      return;
+    }
+    
     setShowPaymentModal(true);
   };
 
@@ -56,6 +100,46 @@ export default function ContentDetailClient({ content, user }: ContentDetailClie
       return;
     }
     setShowDownloadModal(true);
+  };
+
+  const handleLike = async () => {
+    if (!user) {
+      window.location.href = '/sign-in';
+      return;
+    }
+    
+    setIsLiking(true);
+    
+    try {
+      const supabase = createClient();
+      
+      if (isLiked) {
+        // Unlike
+        await supabase
+          .from('likes')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('content_id', content.id);
+        
+        setIsLiked(false);
+        setLikeCount(prev => Math.max(0, prev - 1));
+      } else {
+        // Like
+        await supabase
+          .from('likes')
+          .insert({
+            user_id: user.id,
+            content_id: content.id,
+          });
+        
+        setIsLiked(true);
+        setLikeCount(prev => prev + 1);
+      }
+    } catch (error) {
+      console.error('Error toggling like:', error);
+    } finally {
+      setIsLiking(false);
+    }
   };
 
   // Mock quality ratings for demo
@@ -146,8 +230,8 @@ export default function ContentDetailClient({ content, user }: ContentDetailClie
                     <span>{content.readCount.toLocaleString()}</span>
                   </div>
                   <div className="flex items-center gap-1.5 text-gray-500">
-                    <Heart className="w-4 h-4" />
-                    <span>{content.likeCount.toLocaleString()}</span>
+                    <Heart className={`w-4 h-4 ${isLiked ? 'text-pink-500 fill-pink-500' : ''}`} />
+                    <span>{likeCount.toLocaleString()}</span>
                   </div>
                   <div className="flex items-center gap-1.5 text-gray-500">
                     <Calendar className="w-4 h-4" />
@@ -183,22 +267,40 @@ export default function ContentDetailClient({ content, user }: ContentDetailClie
                 
                 <div className="flex items-center gap-4">
                   <button
-                    onClick={() => setIsLiked(!isLiked)}
+                    onClick={handleLike}
+                    disabled={isLiking}
                     className={`p-4 rounded-xl transition-all ${
                       isLiked
                         ? 'bg-pink-100 text-pink-500'
-                        : 'bg-gray-100 text-gray-400 hover:text-pink-500'
-                    }`}
+                        : 'bg-gray-100 text-gray-400 hover:text-pink-500 hover:bg-pink-50'
+                    } disabled:opacity-50`}
                   >
-                    <Heart className={`w-6 h-6 ${isLiked ? 'fill-current' : ''}`} />
+                    {isLiking ? (
+                      <Loader2 className="w-6 h-6 animate-spin" />
+                    ) : (
+                      <Heart className={`w-6 h-6 ${isLiked ? 'fill-current' : ''}`} />
+                    )}
                   </button>
                   
                   <button
                     onClick={handlePayAndRead}
-                    className="btn-glow px-8 py-4 rounded-xl text-white font-semibold text-lg flex items-center gap-2"
+                    className={`px-8 py-4 rounded-xl font-semibold text-lg flex items-center gap-2 transition-all ${
+                      hasActiveSession
+                        ? 'bg-green-500 hover:bg-green-600 text-white'
+                        : 'btn-glow text-white'
+                    }`}
                   >
-                    Pay & Read Now
-                    <ArrowRight className="w-5 h-5" />
+                    {hasActiveSession ? (
+                      <>
+                        <CheckCircle className="w-5 h-5" />
+                        Continue Reading
+                      </>
+                    ) : (
+                      <>
+                        Pay & Read Now
+                        <ArrowRight className="w-5 h-5" />
+                      </>
+                    )}
                   </button>
                 </div>
                 
