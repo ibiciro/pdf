@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Star, Heart, X, Send, Check, Sparkles, Zap, Award, AlertTriangle, BookCheck } from 'lucide-react';
+import { createClient } from '../../supabase/client';
 
 interface ReviewPanelProps {
   contentTitle: string;
@@ -36,8 +37,53 @@ export default function ReviewPanel({ contentTitle, contentId, onSubmit, onClose
 
   const handleSubmit = async () => {
     setIsSubmitting(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (user && contentId) {
+        // Save review to database
+        if (rating > 0) {
+          await supabase.from('reviews').insert({
+            content_id: contentId,
+            reader_id: user.id,
+            rating: rating,
+            review_text: reviewText || null,
+          });
+        }
+        
+        // Save like if liked
+        if (isLiked) {
+          await supabase.from('likes').upsert({
+            content_id: contentId,
+            user_id: user.id,
+          }, { onConflict: 'content_id,user_id' });
+        }
+        
+        // Save quality rating if selected
+        if (qualityRating) {
+          await supabase.from('quality_ratings').insert({
+            content_id: contentId,
+            user_id: user.id,
+            rating_type: qualityRating,
+          });
+        }
+        
+        // Log activity
+        await supabase.from('activity_logs').insert({
+          user_id: user.id,
+          action_type: 'review_submit',
+          entity_type: 'content',
+          entity_id: contentId,
+          description: `Left a ${rating}-star review`,
+          metadata: { rating, quality_rating: qualityRating, liked: isLiked }
+        });
+      }
+    } catch (error) {
+      console.error('Error submitting review:', error);
+    }
+    
     onSubmit();
   };
 

@@ -52,10 +52,13 @@ export default function VisitorTracker() {
         const sessionId = generateSessionId();
         const deviceType = getDeviceType();
         
+        // Get current user if logged in
+        const { data: { user } } = await supabase.auth.getUser();
+        
         await supabase.from('website_visitors').insert({
           visitor_id: visitorId,
           page_path: pathname,
-          user_id: null, // Will be set if user is logged in via RLS
+          user_id: user?.id || null,
           referrer: document.referrer || null,
           user_agent: navigator.userAgent || null,
           device_type: deviceType,

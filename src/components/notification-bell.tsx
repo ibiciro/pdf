@@ -26,9 +26,18 @@ export default function NotificationBell() {
 
   const fetchNotifications = async () => {
     const supabase = createClient();
+    
+    // Get current user
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+    
     const { data } = await supabase
       .from('notifications')
       .select('*')
+      .eq('user_id', user.id)
       .order('created_at', { ascending: false })
       .limit(20);
     
@@ -44,20 +53,33 @@ export default function NotificationBell() {
 
     // Subscribe to real-time notifications
     const supabase = createClient();
-    const channel = supabase
-      .channel('notifications')
-      .on('postgres_changes', 
-        { event: 'INSERT', schema: 'public', table: 'notifications' },
-        (payload) => {
-          setNotifications(prev => [payload.new as Notification, ...prev]);
-          setUnreadCount(prev => prev + 1);
-        }
-      )
-      .subscribe();
+    
+    const setupRealtime = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
 
-    return () => {
-      supabase.removeChannel(channel);
+      const channel = supabase
+        .channel('notifications')
+        .on('postgres_changes', 
+          { 
+            event: 'INSERT', 
+            schema: 'public', 
+            table: 'notifications',
+            filter: `user_id=eq.${user.id}`
+          },
+          (payload) => {
+            setNotifications(prev => [payload.new as Notification, ...prev]);
+            setUnreadCount(prev => prev + 1);
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
     };
+    
+    setupRealtime();
   }, []);
 
   const handleMarkRead = async (id: string) => {
