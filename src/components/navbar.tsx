@@ -5,9 +5,9 @@ import { BookOpen, Search } from 'lucide-react'
 import UserProfile from './user-profile'
 
 export default async function Navbar() {
-  const supabase = createClient()
+  const supabase = await createClient()
 
-  const { data: { user } } = await (await supabase).auth.getUser()
+  const { data: { user } } = await supabase.auth.getUser()
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-sm border-b border-gray-100 shadow-sm">

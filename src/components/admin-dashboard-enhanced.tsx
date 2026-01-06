@@ -346,66 +346,119 @@ export default function AdminDashboardEnhanced({ user, stats, gatewaySettings }:
         {/* Payment Gateways Section */}
         {activeSection === 'gateways' && (
           <div className="space-y-6">
+            {/* Gateway Status Overview */}
+            <div className="bg-gradient-to-r from-blue-50 to-violet-50 rounded-2xl p-6 border border-blue-100">
+              <div className="flex items-center gap-4 mb-4">
+                <div className="w-12 h-12 rounded-xl bg-blue-600 flex items-center justify-center">
+                  <Wallet className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900">Payment Gateway Overview</h3>
+                  <p className="text-sm text-gray-500">Configure and manage payment providers for your platform</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="bg-white/80 rounded-xl p-4 text-center">
+                  <div className="text-2xl font-bold text-gray-900">
+                    {(Object.values(gateways) as PaymentGatewayConfig[]).filter(g => g.isEnabled).length}
+                  </div>
+                  <div className="text-xs text-gray-500">Active Gateways</div>
+                </div>
+                <div className="bg-white/80 rounded-xl p-4 text-center">
+                  <div className="text-2xl font-bold text-green-600">
+                    {(Object.values(gateways) as PaymentGatewayConfig[]).filter(g => g.isEnabled && g.publicKey).length}
+                  </div>
+                  <div className="text-xs text-gray-500">Fully Configured</div>
+                </div>
+                <div className="bg-white/80 rounded-xl p-4 text-center">
+                  <div className="text-2xl font-bold text-amber-600">
+                    {(Object.values(gateways) as PaymentGatewayConfig[]).filter(g => g.isEnabled && !g.publicKey).length}
+                  </div>
+                  <div className="text-xs text-gray-500">Missing Keys</div>
+                </div>
+                <div className="bg-white/80 rounded-xl p-4 text-center">
+                  <div className="text-2xl font-bold text-gray-400">
+                    {(Object.values(gateways) as PaymentGatewayConfig[]).filter(g => !g.isEnabled).length}
+                  </div>
+                  <div className="text-xs text-gray-500">Disabled</div>
+                </div>
+              </div>
+            </div>
+
             {(Object.entries(gateways) as [PaymentGateway, PaymentGatewayConfig][]).map(([key, gateway]) => (
               <div
                 key={key}
-                className={`bg-white rounded-2xl border ${gateway.isEnabled ? 'border-green-200' : 'border-gray-100'} shadow-sm overflow-hidden`}
+                className={`bg-white rounded-2xl border-2 ${
+                  gateway.isEnabled && gateway.publicKey 
+                    ? 'border-green-200' 
+                    : gateway.isEnabled 
+                    ? 'border-amber-200' 
+                    : 'border-gray-100'
+                } shadow-sm overflow-hidden transition-all hover:shadow-md`}
               >
                 <div className="p-6">
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-4">
-                      <div className={`w-16 h-16 rounded-xl flex items-center justify-center ${
-                        key === 'stripe' ? 'bg-indigo-100' :
-                        key === 'paystack' ? 'bg-blue-100' :
-                        key === 'flutterwave' ? 'bg-orange-100' :
-                        'bg-gray-100'
+                      <div className={`w-16 h-16 rounded-xl flex items-center justify-center shadow-lg ${
+                        key === 'stripe' ? 'bg-gradient-to-br from-indigo-500 to-purple-600' :
+                        key === 'paystack' ? 'bg-gradient-to-br from-blue-500 to-cyan-600' :
+                        key === 'flutterwave' ? 'bg-gradient-to-br from-orange-500 to-amber-600' :
+                        key === 'paypal' ? 'bg-gradient-to-br from-blue-600 to-blue-700' :
+                        key === 'alipay' ? 'bg-gradient-to-br from-blue-400 to-cyan-500' :
+                        key === 'momo' ? 'bg-gradient-to-br from-yellow-500 to-amber-600' :
+                        'bg-gradient-to-br from-gray-400 to-gray-600'
                       }`}>
-                        <CreditCard className={`w-8 h-8 ${
-                          key === 'stripe' ? 'text-indigo-600' :
-                          key === 'paystack' ? 'text-blue-600' :
-                          key === 'flutterwave' ? 'text-orange-600' :
-                          'text-gray-600'
-                        }`} />
+                        <CreditCard className="w-8 h-8 text-white" />
                       </div>
                       
                       <div>
-                        <h3 className="text-xl font-bold text-gray-900">{gateway.name}</h3>
+                        <div className="flex items-center gap-3">
+                          <h3 className="text-xl font-bold text-gray-900">{gateway.name}</h3>
+                          {gateway.isEnabled && gateway.publicKey && (
+                            <span className="flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs font-medium">
+                              <CheckCircle className="w-3 h-3" /> Ready
+                            </span>
+                          )}
+                          {gateway.isEnabled && !gateway.publicKey && (
+                            <span className="flex items-center gap-1 px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full text-xs font-medium">
+                              <AlertTriangle className="w-3 h-3" /> Missing Keys
+                            </span>
+                          )}
+                        </div>
                         <p className="text-sm text-gray-500 mt-1">{gateway.description}</p>
                         <div className="flex items-center gap-4 mt-2">
-                          <span className="text-xs text-gray-400">
-                            Fee: {gateway.fees.percentage}% + ${gateway.fees.fixed / 100}
+                          <span className="text-xs text-gray-400 px-2 py-1 bg-gray-50 rounded-lg">
+                            Fee: {gateway.fees.percentage}% {gateway.fees.fixed > 0 && `+ $${gateway.fees.fixed / 100}`}
                           </span>
-                          <span className="text-xs text-gray-400">
-                            Currencies: {gateway.supportedCurrencies.slice(0, 3).join(', ')}
-                            {gateway.supportedCurrencies.length > 3 && `+${gateway.supportedCurrencies.length - 3}`}
+                          <span className="text-xs text-gray-400 px-2 py-1 bg-gray-50 rounded-lg">
+                            {gateway.supportedCurrencies.slice(0, 4).join(', ')}
+                            {gateway.supportedCurrencies.length > 4 && ` +${gateway.supportedCurrencies.length - 4} more`}
                           </span>
                         </div>
                       </div>
                     </div>
 
                     <div className="flex items-center gap-3">
-                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                        gateway.isEnabled ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
-                      }`}>
-                        {gateway.isEnabled ? 'Enabled' : 'Disabled'}
-                      </span>
-
                       <button
                         onClick={() => handleToggleGateway(key)}
-                        className={`relative w-12 h-6 rounded-full transition-colors ${
+                        className={`relative w-14 h-7 rounded-full transition-colors ${
                           gateway.isEnabled ? 'bg-green-500' : 'bg-gray-300'
                         }`}
                       >
-                        <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${
-                          gateway.isEnabled ? 'left-7' : 'left-1'
+                        <div className={`absolute top-1 w-5 h-5 bg-white rounded-full shadow-md transition-transform ${
+                          gateway.isEnabled ? 'left-8' : 'left-1'
                         }`} />
                       </button>
 
                       <button
                         onClick={() => setEditingGateway(editingGateway === key ? null : key)}
-                        className="p-2 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600"
+                        className={`p-2.5 rounded-xl transition-colors ${
+                          editingGateway === key 
+                            ? 'bg-blue-100 text-blue-600' 
+                            : 'hover:bg-gray-100 text-gray-400 hover:text-gray-600'
+                        }`}
                       >
-                        <Edit className="w-5 h-5" />
+                        <Settings className="w-5 h-5" />
                       </button>
                     </div>
                   </div>
@@ -413,9 +466,24 @@ export default function AdminDashboardEnhanced({ user, stats, gatewaySettings }:
                   {/* Expanded Configuration */}
                   {editingGateway === key && (
                     <div className="mt-6 pt-6 border-t border-gray-100">
+                      {saveSuccess === key && (
+                        <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-xl flex items-center gap-2 text-green-700">
+                          <CheckCircle className="w-5 h-5" />
+                          <span className="text-sm font-medium">Configuration saved successfully!</span>
+                        </div>
+                      )}
+                      {saveError && (
+                        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl flex items-center gap-2 text-red-700">
+                          <AlertTriangle className="w-5 h-5" />
+                          <span className="text-sm font-medium">{saveError}</span>
+                        </div>
+                      )}
+
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">Public Key</label>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Public Key / Client ID
+                          </label>
                           <input
                             type="text"
                             value={gateway.publicKey || ''}
@@ -423,19 +491,24 @@ export default function AdminDashboardEnhanced({ user, stats, gatewaySettings }:
                               ...prev,
                               [key]: { ...prev[key], publicKey: e.target.value }
                             }))}
-                            placeholder={`Enter ${gateway.name} public key`}
-                            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            placeholder={`pk_live_... or pk_test_...`}
+                            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
                           />
+                          <p className="text-xs text-gray-400 mt-1">
+                            Found in your {gateway.name} dashboard under API keys
+                          </p>
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">Secret Key</label>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Secret Key
+                          </label>
                           <div className="relative">
                             <input
                               type={showSecrets[key] ? 'text' : 'password'}
                               value={gatewaySecrets[key] || ''}
                               onChange={(e) => setGatewaySecrets(prev => ({ ...prev, [key]: e.target.value }))}
-                              placeholder={`Enter ${gateway.name} secret key`}
-                              className="w-full px-4 py-3 pr-12 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                              placeholder={`sk_live_... or sk_test_...`}
+                              className="w-full px-4 py-3 pr-12 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
                             />
                             <button
                               type="button"
@@ -445,20 +518,47 @@ export default function AdminDashboardEnhanced({ user, stats, gatewaySettings }:
                               {showSecrets[key] ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                             </button>
                           </div>
+                          <p className="text-xs text-gray-400 mt-1">
+                            Keep this secret! Never share publicly.
+                          </p>
                         </div>
+                      </div>
+
+                      {/* Webhook Configuration */}
+                      <div className="mt-4 p-4 bg-gray-50 rounded-xl">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Webhook Endpoint (for {gateway.name})
+                        </label>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="text"
+                            readOnly
+                            value={`https://yourdomain.com/api/webhooks/${key}`}
+                            className="flex-1 px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-mono text-gray-600"
+                          />
+                          <button
+                            onClick={() => navigator.clipboard.writeText(`https://yourdomain.com/api/webhooks/${key}`)}
+                            className="px-4 py-2 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 text-sm font-medium"
+                          >
+                            Copy
+                          </button>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-2">
+                          Add this URL to your {gateway.name} webhook settings to receive payment notifications.
+                        </p>
                       </div>
 
                       <div className="mt-4 flex justify-end gap-3">
                         <button
                           onClick={() => setEditingGateway(null)}
-                          className="px-4 py-2 text-gray-600 hover:text-gray-900"
+                          className="px-4 py-2.5 text-gray-600 hover:text-gray-900 font-medium"
                         >
                           Cancel
                         </button>
                         <button
                           onClick={() => handleSaveGateway(key)}
                           disabled={saving}
-                          className="px-6 py-2 bg-gradient-to-r from-blue-500 to-violet-500 text-white rounded-xl font-medium flex items-center gap-2 hover:shadow-lg disabled:opacity-50"
+                          className="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-violet-600 text-white rounded-xl font-medium flex items-center gap-2 hover:shadow-lg disabled:opacity-50 transition-all"
                         >
                           {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                           Save Configuration
@@ -905,6 +1005,69 @@ export default function AdminDashboardEnhanced({ user, stats, gatewaySettings }:
         {/* Security Section */}
         {activeSection === 'security' && (
           <div className="space-y-6">
+            {/* Payment Gateway Status */}
+            <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
+              <h2 className="text-xl font-bold text-gray-900 font-display mb-6">Payment Gateway Status</h2>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {(Object.entries(gateways) as [PaymentGateway, PaymentGatewayConfig][]).map(([key, gateway]) => (
+                  <div 
+                    key={key}
+                    className={`p-4 rounded-xl border ${
+                      gateway.isEnabled && gateway.publicKey
+                        ? 'bg-green-50 border-green-200'
+                        : gateway.isEnabled
+                        ? 'bg-amber-50 border-amber-200'
+                        : 'bg-gray-50 border-gray-200'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                        key === 'stripe' ? 'bg-indigo-100' :
+                        key === 'paystack' ? 'bg-blue-100' :
+                        key === 'flutterwave' ? 'bg-orange-100' :
+                        key === 'paypal' ? 'bg-blue-100' :
+                        'bg-gray-100'
+                      }`}>
+                        <CreditCard className={`w-5 h-5 ${
+                          key === 'stripe' ? 'text-indigo-600' :
+                          key === 'paystack' ? 'text-blue-600' :
+                          key === 'flutterwave' ? 'text-orange-600' :
+                          key === 'paypal' ? 'text-blue-600' :
+                          'text-gray-600'
+                        }`} />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-gray-900">{gateway.name}</p>
+                        <p className="text-xs text-gray-500">Fee: {gateway.fees.percentage}%</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className={`text-sm font-medium ${
+                        gateway.isEnabled && gateway.publicKey
+                          ? 'text-green-700'
+                          : gateway.isEnabled
+                          ? 'text-amber-700'
+                          : 'text-gray-500'
+                      }`}>
+                        {gateway.isEnabled && gateway.publicKey
+                          ? '✓ Ready'
+                          : gateway.isEnabled
+                          ? '⚠ Missing Keys'
+                          : 'Disabled'}
+                      </span>
+                      <button
+                        onClick={() => setActiveSection('gateways')}
+                        className="text-xs text-blue-600 hover:underline"
+                      >
+                        Configure
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
             <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
               <h2 className="text-xl font-bold text-gray-900 font-display mb-6">Content Protection</h2>
               

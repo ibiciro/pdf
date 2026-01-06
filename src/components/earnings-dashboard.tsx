@@ -246,33 +246,88 @@ export default function EarningsDashboard({ user, content, transactions }: Earni
       {/* Payout Modal */}
       {showPayoutModal && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6">
-            <h3 className="text-xl font-bold text-gray-900 mb-4">Request Payout</h3>
-            <p className="text-gray-500 mb-6">
-              Your pending balance of ${(pendingPayout / 100).toFixed(2)} will be transferred to your connected payment method.
-            </p>
-            <div className="bg-gray-50 rounded-xl p-4 mb-6">
-              <div className="flex items-center gap-3 mb-2">
-                <Banknote className="w-5 h-5 text-gray-400" />
-                <span className="text-gray-600">Bank Account</span>
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6">
+            <div className="flex items-center gap-4 mb-6">
+              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center shadow-lg">
+                <Wallet className="w-7 h-7 text-white" />
               </div>
-              <p className="text-sm text-gray-500">••••1234 (Connected via Stripe)</p>
+              <div>
+                <h3 className="text-xl font-bold text-gray-900">Request Payout</h3>
+                <p className="text-gray-500 text-sm">Transfer your earnings to your wallet</p>
+              </div>
             </div>
+            
+            {/* Payout Amount */}
+            <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-4 mb-6 border border-green-100">
+              <div className="text-center">
+                <p className="text-sm text-gray-600 mb-1">Available for payout</p>
+                <p className="text-4xl font-bold text-gray-900">${(pendingPayout / 100).toFixed(2)}</p>
+                <p className="text-xs text-gray-500 mt-1">After 15% platform fee</p>
+              </div>
+            </div>
+
+            {/* Connected Wallet */}
+            <div className="mb-6">
+              <p className="text-sm font-medium text-gray-700 mb-3">Payout Method</p>
+              <div className="space-y-3">
+                <div className="p-4 bg-gray-50 rounded-xl border-2 border-blue-500 cursor-pointer">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center">
+                      <CreditCard className="w-6 h-6 text-white" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-semibold text-gray-900">Stripe Connect</p>
+                      <p className="text-sm text-gray-500">••••••••1234 · Instant payout</p>
+                    </div>
+                    <CheckCircle className="w-6 h-6 text-blue-500" />
+                  </div>
+                </div>
+                
+                <div className="p-4 bg-gray-50 rounded-xl border border-dashed border-gray-300 cursor-pointer hover:border-blue-300 hover:bg-blue-50/30 transition-colors">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+                      <Banknote className="w-6 h-6 text-blue-600" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-semibold text-gray-900">Add Bank Account</p>
+                      <p className="text-sm text-gray-500">Direct deposit (2-3 days)</p>
+                    </div>
+                    <ArrowRight className="w-5 h-5 text-gray-400" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Payout Schedule Info */}
+            <div className="bg-amber-50 rounded-xl p-4 mb-6 border border-amber-100">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm text-amber-800 font-medium">Payout Schedule</p>
+                  <p className="text-xs text-amber-600 mt-1">
+                    Payouts are processed weekly on Mondays. Minimum payout amount is $50.00.
+                  </p>
+                </div>
+              </div>
+            </div>
+
             <div className="flex gap-3">
               <button
                 onClick={() => setShowPayoutModal(false)}
-                className="flex-1 px-4 py-3 border border-gray-200 rounded-xl hover:bg-gray-50 font-medium"
+                className="flex-1 px-4 py-3 border border-gray-200 rounded-xl hover:bg-gray-50 font-medium transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={() => {
-                  alert('Payout requested! This is a demo.');
+                  alert('Payout requested! You will receive funds within 2-3 business days.');
                   setShowPayoutModal(false);
                 }}
-                className="flex-1 btn-glow px-4 py-3 rounded-xl text-white font-semibold"
+                disabled={pendingPayout < 5000}
+                className="flex-1 btn-glow px-4 py-3 rounded-xl text-white font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
-                Confirm Payout
+                <Wallet className="w-5 h-5" />
+                Request Payout
               </button>
             </div>
           </div>

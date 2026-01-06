@@ -334,30 +334,132 @@ export default function SettingsDashboard({ user, profile }: SettingsDashboardPr
             {/* Payment Settings */}
             {activeSection === 'payment' && (
               <div>
-                <h2 className="text-xl font-bold text-gray-900 font-display mb-6">Payment Settings</h2>
+                <h2 className="text-xl font-bold text-gray-900 font-display mb-6">Payment & Wallet Settings</h2>
                 <div className="space-y-6">
-                  <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
-                    <div className="flex items-center gap-4 mb-4">
-                      <div className="w-12 h-8 bg-gradient-to-r from-blue-600 to-violet-600 rounded flex items-center justify-center">
-                        <CreditCard className="w-6 h-4 text-white" />
+                  {/* Connected Payment Methods */}
+                  <div>
+                    <h3 className="font-semibold text-gray-900 mb-4">Connected Payout Methods</h3>
+                    <div className="space-y-3">
+                      {/* Stripe */}
+                      <div className="bg-white rounded-xl p-5 border border-gray-200 hover:border-blue-300 transition-colors">
+                        <div className="flex items-center gap-4">
+                          <div className="w-14 h-14 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
+                            <CreditCard className="w-7 h-7 text-white" />
+                          </div>
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <p className="font-semibold text-gray-900">Stripe Connect</p>
+                              <span className="px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs font-medium">
+                                Primary
+                              </span>
+                            </div>
+                            <p className="text-sm text-gray-500">••••••••1234 · Instant payouts enabled</p>
+                          </div>
+                          <div className="text-right">
+                            <span className="flex items-center gap-1 text-green-600 text-sm font-medium">
+                              <Check className="w-4 h-4" /> Connected
+                            </span>
+                          </div>
+                        </div>
                       </div>
-                      <div>
-                        <p className="font-medium text-gray-900">Stripe Connect</p>
-                        <p className="text-sm text-gray-500">Connected</p>
+
+                      {/* PayPal */}
+                      <div className="bg-gray-50 rounded-xl p-5 border border-dashed border-gray-300 hover:border-blue-300 transition-colors cursor-pointer group">
+                        <div className="flex items-center gap-4">
+                          <div className="w-14 h-14 bg-blue-100 rounded-xl flex items-center justify-center group-hover:bg-blue-200 transition-colors">
+                            <CreditCard className="w-7 h-7 text-blue-600" />
+                          </div>
+                          <div className="flex-1">
+                            <p className="font-semibold text-gray-900">PayPal</p>
+                            <p className="text-sm text-gray-500">Connect your PayPal account for payouts</p>
+                          </div>
+                          <button className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">
+                            Connect
+                          </button>
+                        </div>
                       </div>
-                      <span className="ml-auto px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">
-                        Active
-                      </span>
+
+                      {/* Bank Transfer */}
+                      <div className="bg-gray-50 rounded-xl p-5 border border-dashed border-gray-300 hover:border-blue-300 transition-colors cursor-pointer group">
+                        <div className="flex items-center gap-4">
+                          <div className="w-14 h-14 bg-emerald-100 rounded-xl flex items-center justify-center group-hover:bg-emerald-200 transition-colors">
+                            <CreditCard className="w-7 h-7 text-emerald-600" />
+                          </div>
+                          <div className="flex-1">
+                            <p className="font-semibold text-gray-900">Bank Transfer</p>
+                            <p className="text-sm text-gray-500">Direct bank deposit (2-3 business days)</p>
+                          </div>
+                          <button className="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 transition-colors">
+                            Add Bank
+                          </button>
+                        </div>
+                      </div>
                     </div>
-                    <p className="text-sm text-gray-500">
-                      Your earnings are automatically deposited to your connected Stripe account.
-                    </p>
                   </div>
-                  
-                  <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-                    <p className="text-sm text-blue-800">
-                      <strong>Platform Fee:</strong> 15% of each transaction goes to PayPerRead.
-                    </p>
+
+                  {/* Payout Schedule */}
+                  <div className="bg-gradient-to-r from-blue-50 to-violet-50 rounded-xl p-6 border border-blue-100">
+                    <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                      <Bell className="w-5 h-5 text-blue-600" />
+                      Payout Schedule
+                    </h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      {['Daily', 'Weekly', 'Monthly'].map((schedule) => (
+                        <button
+                          key={schedule}
+                          className={`p-4 rounded-xl border-2 text-center transition-all ${
+                            schedule === 'Weekly'
+                              ? 'border-blue-500 bg-white shadow-lg'
+                              : 'border-transparent bg-white/50 hover:bg-white hover:border-gray-200'
+                          }`}
+                        >
+                          <p className={`font-semibold ${schedule === 'Weekly' ? 'text-blue-600' : 'text-gray-700'}`}>
+                            {schedule}
+                          </p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            {schedule === 'Daily' && 'Next day'}
+                            {schedule === 'Weekly' && 'Every Monday'}
+                            {schedule === 'Monthly' && '1st of month'}
+                          </p>
+                          {schedule === 'Weekly' && (
+                            <span className="inline-block mt-2 px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-xs font-medium">
+                              Active
+                            </span>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Minimum Payout */}
+                  <div className="bg-white rounded-xl p-5 border border-gray-200">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="font-semibold text-gray-900">Minimum Payout Threshold</h3>
+                        <p className="text-sm text-gray-500 mt-1">
+                          Payouts will only be processed when your balance exceeds this amount
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-2xl font-bold text-gray-900">$50</span>
+                        <button className="p-2 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-gray-600">
+                          <Settings className="w-5 h-5" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Platform Fee Notice */}
+                  <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+                    <div className="flex items-start gap-3">
+                      <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-sm text-amber-800 font-medium">Platform Fee: 15%</p>
+                        <p className="text-xs text-amber-600 mt-1">
+                          PayPerRead takes a 15% platform fee from each transaction. Upgrade to Creator Pro to reduce this to 10%.
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
