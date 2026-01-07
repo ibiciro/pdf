@@ -2,7 +2,7 @@ import Footer from "@/components/footer";
 import Hero from "@/components/hero";
 import Navbar from "@/components/navbar";
 import ContentCard from "@/components/content-card";
-import { ArrowRight, Clock, DollarSign, Shield, Zap, ChevronRight, Star } from 'lucide-react';
+import { ArrowRight, ChevronRight } from 'lucide-react';
 import { createClient } from "../../supabase/server";
 import Link from "next/link";
 
@@ -83,23 +83,23 @@ export default async function Home() {
       <Hero />
       
       {/* How it works - Simple 3 steps */}
-      <section className="py-24 bg-white">
+      <section className="py-20 bg-white">
         <div className="container mx-auto px-6">
           <div className="text-center mb-16">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">How it works</h2>
+            <h2 className="text-3xl font-bold text-gray-900 mb-3">How it works</h2>
             <p className="text-gray-500">Three simple steps to start earning</p>
           </div>
           
-          <div className="grid md:grid-cols-3 gap-12 max-w-4xl mx-auto">
+          <div className="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto">
             {[
-              { step: '01', title: 'Create', desc: 'Upload your content and set your price per reading session' },
-              { step: '02', title: 'Share', desc: 'Share your content link with your audience anywhere' },
-              { step: '03', title: 'Earn', desc: 'Get paid instantly when readers purchase access' },
+              { step: '1', title: 'Create', desc: 'Upload your content and set your price' },
+              { step: '2', title: 'Share', desc: 'Share your content link anywhere' },
+              { step: '3', title: 'Earn', desc: 'Get paid when readers purchase access' },
             ].map((item, i) => (
-              <div key={i} className="text-center">
-                <div className="text-5xl font-bold text-gray-100 mb-4">{item.step}</div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">{item.title}</h3>
-                <p className="text-gray-500">{item.desc}</p>
+              <div key={i} className="text-center p-6">
+                <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center text-xl font-bold text-gray-400 mx-auto mb-4">{item.step}</div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">{item.title}</h3>
+                <p className="text-gray-500 text-sm">{item.desc}</p>
               </div>
             ))}
           </div>
@@ -132,95 +132,49 @@ export default async function Home() {
       </section>
 
       {/* Features - Minimal */}
-      <section className="py-24 bg-white">
+      <section className="py-20 bg-white">
         <div className="container mx-auto px-6">
-          <div className="grid lg:grid-cols-2 gap-16 items-center">
-            <div>
-              <h2 className="text-3xl font-bold text-gray-900 mb-6">
-                Built for creators who value their work
+          <div className="max-w-4xl mx-auto">
+            <div className="text-center mb-12">
+              <h2 className="text-3xl font-bold text-gray-900 mb-3">
+                Why creators choose us
               </h2>
-              <p className="text-gray-500 mb-8">
-                We handle the technical stuff so you can focus on creating great content.
-              </p>
-              
-              <div className="space-y-6">
-                {[
-                  { icon: <Clock className="w-5 h-5" />, title: 'Timed Sessions', desc: 'Create urgency with time-limited access' },
-                  { icon: <Shield className="w-5 h-5" />, title: 'Protected Content', desc: 'No copying, no screenshots, no piracy' },
-                  { icon: <Zap className="w-5 h-5" />, title: 'Instant Payouts', desc: 'Get paid as soon as someone reads' },
-                  { icon: <DollarSign className="w-5 h-5" />, title: 'You Set the Price', desc: 'Full control over your earnings' },
-                ].map((feature, i) => (
-                  <div key={i} className="flex items-start gap-4">
-                    <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center text-gray-600 flex-shrink-0">
-                      {feature.icon}
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-gray-900">{feature.title}</h3>
-                      <p className="text-sm text-gray-500">{feature.desc}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <p className="text-gray-500">Simple tools to monetize your expertise</p>
             </div>
             
-            <div className="relative">
-              <div className="bg-gradient-to-br from-gray-100 to-gray-50 rounded-2xl p-8">
-                <img 
-                  src="https://images.unsplash.com/photo-1499750310107-5fef28a66643?w=800&q=80"
-                  alt="Creator workspace"
-                  className="rounded-xl shadow-lg"
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Social proof - Minimal */}
-      <section className="py-16 bg-gray-50 border-y border-gray-100">
-        <div className="container mx-auto px-6">
-          <div className="flex flex-col md:flex-row items-center justify-center gap-8 md:gap-16">
-            <div className="flex items-center gap-2">
-              <Star className="w-5 h-5 text-amber-400 fill-amber-400" />
-              <span className="font-semibold text-gray-900">4.9/5</span>
-              <span className="text-gray-500">from 2,000+ reviews</span>
-            </div>
-            <div className="h-6 w-px bg-gray-300 hidden md:block" />
-            <div className="text-gray-500">
-              Trusted by <span className="font-semibold text-gray-900">10,000+</span> creators worldwide
-            </div>
-            <div className="h-6 w-px bg-gray-300 hidden md:block" />
-            <div className="text-gray-500">
-              <span className="font-semibold text-gray-900">$2.5M+</span> paid to creators
+            <div className="grid sm:grid-cols-2 gap-6">
+              {[
+                { title: 'Timed Sessions', desc: 'Create urgency with time-limited access to your content' },
+                { title: 'Protected Content', desc: 'No copying, no screenshots, no unauthorized sharing' },
+                { title: 'Instant Payouts', desc: 'Get paid directly to your account when readers pay' },
+                { title: 'Full Control', desc: 'Set your own prices and session durations' },
+              ].map((feature, i) => (
+                <div key={i} className="p-6 rounded-2xl bg-gray-50 hover:bg-gray-100 transition-colors">
+                  <h3 className="font-semibold text-gray-900 mb-2">{feature.title}</h3>
+                  <p className="text-sm text-gray-500">{feature.desc}</p>
+                </div>
+              ))}
             </div>
           </div>
         </div>
       </section>
 
       {/* CTA - Clean */}
-      <section className="py-24 bg-gray-900">
+      <section className="py-20 bg-gray-900">
         <div className="container mx-auto px-6 text-center">
-          <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
-            Ready to start earning?
+          <h2 className="text-3xl font-bold text-white mb-4">
+            Start earning today
           </h2>
-          <p className="text-gray-400 mb-8 max-w-lg mx-auto">
-            Join thousands of creators who are already monetizing their content with PayPerRead.
+          <p className="text-gray-400 mb-8 max-w-md mx-auto">
+            Join thousands of creators monetizing their content.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link 
-              href="/sign-up" 
-              className="inline-flex items-center justify-center px-8 py-4 bg-white text-gray-900 rounded-full font-semibold hover:bg-gray-100 transition-colors"
-            >
-              Get started free
-              <ArrowRight className="ml-2 w-5 h-5" />
-            </Link>
-            <Link 
-              href="/pricing" 
-              className="inline-flex items-center justify-center px-8 py-4 text-white border border-gray-700 rounded-full font-semibold hover:bg-gray-800 transition-colors"
-            >
-              View pricing
-            </Link>
-          </div>
+          <Link 
+            href="/sign-up" 
+            className="inline-flex items-center justify-center px-8 py-4 bg-white text-gray-900 rounded-full font-medium hover:bg-gray-100 transition-colors"
+          >
+            Get started free
+            <ArrowRight className="ml-2 w-5 h-5" />
+          </Link>
         </div>
       </section>
 

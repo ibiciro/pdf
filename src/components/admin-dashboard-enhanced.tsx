@@ -54,6 +54,11 @@ export default function AdminDashboardEnhanced({ user, stats, gatewaySettings }:
   const [userFilter, setUserFilter] = useState<'all' | 'creators' | 'readers'>('all');
   const [contentFilter, setContentFilter] = useState<'all' | 'published' | 'draft'>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  
+  // User action states
+  const [selectedUser, setSelectedUser] = useState<any>(null);
+  const [showUserModal, setShowUserModal] = useState(false);
+  const [userActionLoading, setUserActionLoading] = useState(false);
 
   // Initialize gateway configurations
   const [gateways, setGateways] = useState<Record<PaymentGateway, PaymentGatewayConfig>>(() => {
@@ -663,9 +668,67 @@ export default function AdminDashboardEnhanced({ user, stats, gatewaySettings }:
                             </span>
                           </td>
                           <td className="px-6 py-4 text-right">
-                            <button className="p-2 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-gray-600">
-                              <MoreVertical className="w-4 h-4" />
-                            </button>
+                            <div className="relative inline-block">
+                              <button 
+                                onClick={() => {
+                                  setSelectedUser(selectedUser?.id === u.id ? null : u);
+                                }}
+                                className="p-2 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-gray-600"
+                              >
+                                <MoreVertical className="w-4 h-4" />
+                              </button>
+                              
+                              {selectedUser?.id === u.id && (
+                                <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg border border-gray-100 py-1 z-50">
+                                  <button
+                                    onClick={() => {
+                                      setShowUserModal(true);
+                                    }}
+                                    className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                                  >
+                                    <Eye className="w-4 h-4" />
+                                    View Details
+                                  </button>
+                                  <button
+                                    onClick={async () => {
+                                      const supabase = createClient();
+                                      await supabase.from('users').update({ role: 'creator' }).eq('id', u.id);
+                                      setUsers(prev => prev.map(user => user.id === u.id ? { ...user, role: 'creator' } : user));
+                                      setSelectedUser(null);
+                                    }}
+                                    className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                                  >
+                                    <UserCheck className="w-4 h-4" />
+                                    Make Creator
+                                  </button>
+                                  <button
+                                    onClick={async () => {
+                                      const supabase = createClient();
+                                      await supabase.from('admin_users').upsert({ user_id: u.id, role: 'admin' });
+                                      setSelectedUser(null);
+                                      alert('User promoted to admin!');
+                                    }}
+                                    className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                                  >
+                                    <Shield className="w-4 h-4" />
+                                    Make Admin
+                                  </button>
+                                  <div className="border-t border-gray-100 my-1" />
+                                  <button
+                                    onClick={() => {
+                                      if (confirm('Are you sure you want to delete this user?')) {
+                                        setUsers(prev => prev.filter(user => user.id !== u.id));
+                                        setSelectedUser(null);
+                                      }
+                                    }}
+                                    className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                    Delete User
+                                  </button>
+                                </div>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -673,6 +736,57 @@ export default function AdminDashboardEnhanced({ user, stats, gatewaySettings }:
                   </table>
                 </div>
               )}
+            </div>
+          </div>
+        )}
+        
+        {/* User Detail Modal */}
+        {showUserModal && selectedUser && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl max-w-lg w-full p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-bold text-gray-900">User Details</h3>
+                <button 
+                  onClick={() => { setShowUserModal(false); setSelectedUser(null); }}
+                  className="p-2 hover:bg-gray-100 rounded-lg"
+                >
+                  <XCircle className="w-5 h-5 text-gray-500" />
+                </button>
+              </div>
+              
+              <div className="flex items-center gap-4 mb-6">
+                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-violet-500 flex items-center justify-center text-white text-2xl font-bold">
+                  {selectedUser.full_name?.[0] || selectedUser.email?.[0] || '?'}
+                </div>
+                <div>
+                  <div className="text-xl font-semibold text-gray-900">{selectedUser.full_name || 'No name'}</div>
+                  <div className="text-gray-500">{selectedUser.email}</div>
+                </div>
+              </div>
+              
+              <div className="space-y-4">
+                <div className="flex justify-between p-3 bg-gray-50 rounded-lg">
+                  <span className="text-gray-600">Role</span>
+                  <span className="font-medium text-gray-900 capitalize">{selectedUser.role || 'reader'}</span>
+                </div>
+                <div className="flex justify-between p-3 bg-gray-50 rounded-lg">
+                  <span className="text-gray-600">Joined</span>
+                  <span className="font-medium text-gray-900">{format(new Date(selectedUser.created_at), 'MMM d, yyyy')}</span>
+                </div>
+                <div className="flex justify-between p-3 bg-gray-50 rounded-lg">
+                  <span className="text-gray-600">User ID</span>
+                  <span className="font-mono text-sm text-gray-900">{selectedUser.id.slice(0, 8)}...</span>
+                </div>
+              </div>
+              
+              <div className="flex gap-3 mt-6">
+                <button 
+                  onClick={() => { setShowUserModal(false); setSelectedUser(null); }}
+                  className="flex-1 px-4 py-3 border border-gray-200 rounded-xl hover:bg-gray-50 font-medium"
+                >
+                  Close
+                </button>
+              </div>
             </div>
           </div>
         )}

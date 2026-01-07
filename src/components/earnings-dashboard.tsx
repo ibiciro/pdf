@@ -14,11 +14,14 @@ import {
   Wallet,
   Banknote,
   FileText,
-  AlertCircle
+  AlertCircle,
+  Loader2,
+  X
 } from 'lucide-react';
 import Link from 'next/link';
 import DashboardSidebar from './dashboard-sidebar';
 import { useState } from 'react';
+import { createClient } from '../../supabase/client';
 
 interface EarningsDashboardProps {
   user: User;
@@ -28,6 +31,9 @@ interface EarningsDashboardProps {
 
 export default function EarningsDashboard({ user, content, transactions }: EarningsDashboardProps) {
   const [showPayoutModal, setShowPayoutModal] = useState(false);
+  const [payoutProcessing, setPayoutProcessing] = useState(false);
+  const [payoutSuccess, setPayoutSuccess] = useState(false);
+  const [selectedPayoutMethod, setSelectedPayoutMethod] = useState<'stripe' | 'bank'>('stripe');
 
   // Calculate earnings
   const totalEarnings = content.reduce((acc, c) => acc + (c.total_earnings_cents || 0), 0);
@@ -270,29 +276,39 @@ export default function EarningsDashboard({ user, content, transactions }: Earni
             <div className="mb-6">
               <p className="text-sm font-medium text-gray-700 mb-3">Payout Method</p>
               <div className="space-y-3">
-                <div className="p-4 bg-gray-50 rounded-xl border-2 border-blue-500 cursor-pointer">
+                <div 
+                  onClick={() => setSelectedPayoutMethod('stripe')}
+                  className={`p-4 bg-gray-50 rounded-xl border-2 cursor-pointer transition-all ${
+                    selectedPayoutMethod === 'stripe' ? 'border-blue-500' : 'border-transparent hover:border-gray-200'
+                  }`}
+                >
                   <div className="flex items-center gap-4">
                     <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center">
                       <CreditCard className="w-6 h-6 text-white" />
                     </div>
                     <div className="flex-1">
                       <p className="font-semibold text-gray-900">Stripe Connect</p>
-                      <p className="text-sm text-gray-500">••••••••1234 · Instant payout</p>
+                      <p className="text-sm text-gray-500">Instant payout to your account</p>
                     </div>
-                    <CheckCircle className="w-6 h-6 text-blue-500" />
+                    {selectedPayoutMethod === 'stripe' && <CheckCircle className="w-6 h-6 text-blue-500" />}
                   </div>
                 </div>
                 
-                <div className="p-4 bg-gray-50 rounded-xl border border-dashed border-gray-300 cursor-pointer hover:border-blue-300 hover:bg-blue-50/30 transition-colors">
+                <div 
+                  onClick={() => setSelectedPayoutMethod('bank')}
+                  className={`p-4 bg-gray-50 rounded-xl border-2 cursor-pointer transition-all ${
+                    selectedPayoutMethod === 'bank' ? 'border-blue-500' : 'border-transparent hover:border-gray-200'
+                  }`}
+                >
                   <div className="flex items-center gap-4">
                     <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
                       <Banknote className="w-6 h-6 text-blue-600" />
                     </div>
                     <div className="flex-1">
-                      <p className="font-semibold text-gray-900">Add Bank Account</p>
+                      <p className="font-semibold text-gray-900">Bank Transfer</p>
                       <p className="text-sm text-gray-500">Direct deposit (2-3 days)</p>
                     </div>
-                    <ArrowRight className="w-5 h-5 text-gray-400" />
+                    {selectedPayoutMethod === 'bank' && <CheckCircle className="w-6 h-6 text-blue-500" />}
                   </div>
                 </div>
               </div>
@@ -313,23 +329,81 @@ export default function EarningsDashboard({ user, content, transactions }: Earni
 
             <div className="flex gap-3">
               <button
-                onClick={() => setShowPayoutModal(false)}
+                onClick={() => { setShowPayoutModal(false); setPayoutSuccess(false); }}
                 className="flex-1 px-4 py-3 border border-gray-200 rounded-xl hover:bg-gray-50 font-medium transition-colors"
               >
-                Cancel
+                {payoutSuccess ? 'Close' : 'Cancel'}
               </button>
-              <button
-                onClick={() => {
-                  alert('Payout requested! You will receive funds within 2-3 business days.');
-                  setShowPayoutModal(false);
-                }}
-                disabled={pendingPayout < 5000}
-                className="flex-1 btn-glow px-4 py-3 rounded-xl text-white font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-              >
-                <Wallet className="w-5 h-5" />
-                Request Payout
-              </button>
+              {!payoutSuccess && (
+                <button
+                  onClick={async () => {
+                    setPayoutProcessing(true);
+                    
+                    try {
+                      const supabase = createClient();
+                      
+                      // Create payout request record
+                      await supabase.from('activity_logs').insert({
+                        user_id: user.id,
+                        action_type: 'payout_request',
+                        entity_type: 'payout',
+                        description: `Payout request for $${(pendingPayout / 100).toFixed(2)}`,
+                        metadata: { 
+                          amount_cents: pendingPayout, 
+                          method: selectedPayoutMethod,
+                          status: 'pending'
+                        }
+                      });
+                      
+                      // Create notification
+                      await supabase.from('notifications').insert({
+                        user_id: user.id,
+                        type: 'earning',
+                        title: 'Payout Requested',
+                        message: `Your payout request for $${(pendingPayout / 100).toFixed(2)} has been submitted and will be processed within 2-3 business days.`,
+                        metadata: { amount_cents: pendingPayout }
+                      });
+                      
+                      // Simulate processing time
+                      await new Promise(resolve => setTimeout(resolve, 1500));
+                      
+                      setPayoutSuccess(true);
+                    } catch (error) {
+                      console.error('Payout error:', error);
+                      alert('Failed to process payout. Please try again.');
+                    } finally {
+                      setPayoutProcessing(false);
+                    }
+                  }}
+                  disabled={pendingPayout < 5000 || payoutProcessing}
+                  className="flex-1 bg-gradient-to-r from-green-500 to-emerald-600 px-4 py-3 rounded-xl text-white font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 hover:shadow-lg transition-shadow"
+                >
+                  {payoutProcessing ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      Processing...
+                    </>
+                  ) : (
+                    <>
+                      <Wallet className="w-5 h-5" />
+                      Request Payout
+                    </>
+                  )}
+                </button>
+              )}
             </div>
+            
+            {payoutSuccess && (
+              <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-xl">
+                <div className="flex items-center gap-3">
+                  <CheckCircle className="w-6 h-6 text-green-600" />
+                  <div>
+                    <p className="font-semibold text-green-800">Payout Requested Successfully!</p>
+                    <p className="text-sm text-green-600">You will receive funds within 2-3 business days.</p>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
