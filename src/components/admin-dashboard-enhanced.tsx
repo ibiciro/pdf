@@ -7,7 +7,8 @@ import {
   Globe, CheckCircle, XCircle, Edit, Save, Loader2, ArrowLeft, Eye, EyeOff,
   Plus, Trash2, AlertTriangle, TrendingUp, BarChart3, Clock, Wallet, Search,
   ChevronDown, ChevronRight, Monitor, Smartphone, Tablet, ExternalLink,
-  UserCheck, UserX, Mail, Calendar, RefreshCw, Download, Filter, MoreVertical
+  UserCheck, UserX, Mail, Calendar, RefreshCw, Download, Filter, MoreVertical,
+  Tag, Palette
 } from 'lucide-react';
 import Link from 'next/link';
 import { createClient } from '../../supabase/client';
@@ -32,7 +33,7 @@ interface AdminDashboardEnhancedProps {
   gatewaySettings: any[];
 }
 
-type ActiveSection = 'overview' | 'gateways' | 'users' | 'content' | 'transactions' | 'visitors' | 'activity' | 'security';
+type ActiveSection = 'overview' | 'gateways' | 'categories' | 'users' | 'content' | 'transactions' | 'visitors' | 'activity' | 'security';
 
 export default function AdminDashboardEnhanced({ user, stats, gatewaySettings }: AdminDashboardEnhancedProps) {
   const [activeSection, setActiveSection] = useState<ActiveSection>('overview');
@@ -49,6 +50,9 @@ export default function AdminDashboardEnhanced({ user, stats, gatewaySettings }:
   const [transactions, setTransactions] = useState<any[]>([]);
   const [visitorStats, setVisitorStats] = useState<any>(null);
   const [activityLogs, setActivityLogs] = useState<any[]>([]);
+  const [categoryList, setCategoryList] = useState<any[]>([]);
+  const [newCategory, setNewCategory] = useState({ name: '', color: 'blue', description: '' });
+  const [addingCategory, setAddingCategory] = useState(false);
 
   // Filter states
   const [userFilter, setUserFilter] = useState<'all' | 'creators' | 'readers'>('all');
@@ -81,6 +85,7 @@ export default function AdminDashboardEnhanced({ user, stats, gatewaySettings }:
     const loadData = async () => {
       setLoading(true);
       try {
+        const supabase = createClient();
         switch (activeSection) {
           case 'users':
             const { users: userData } = await getAdminUsersAction();
@@ -102,6 +107,13 @@ export default function AdminDashboardEnhanced({ user, stats, gatewaySettings }:
             const { logs } = await getAdminActivityLogsAction(100);
             setActivityLogs(logs || []);
             break;
+          case 'categories':
+            const { data: categoriesData } = await supabase
+              .from('categories')
+              .select('*')
+              .order('display_order', { ascending: true });
+            setCategoryList(categoriesData || []);
+            break;
         }
       } catch (error) {
         console.error('Error loading data:', error);
@@ -111,6 +123,59 @@ export default function AdminDashboardEnhanced({ user, stats, gatewaySettings }:
 
     loadData();
   }, [activeSection]);
+
+  // Category CRUD functions
+  const handleAddCategory = async () => {
+    if (!newCategory.name.trim()) return;
+    setAddingCategory(true);
+    
+    try {
+      const supabase = createClient();
+      const slug = newCategory.name.toLowerCase().replace(/\s+/g, '-');
+      
+      const { data, error } = await supabase
+        .from('categories')
+        .insert({
+          name: newCategory.name,
+          slug,
+          color: newCategory.color,
+          description: newCategory.description,
+          is_active: true,
+          display_order: categoryList.length,
+        })
+        .select()
+        .single();
+      
+      if (error) throw error;
+      
+      setCategoryList([...categoryList, data]);
+      setNewCategory({ name: '', color: 'blue', description: '' });
+    } catch (error) {
+      console.error('Error adding category:', error);
+    } finally {
+      setAddingCategory(false);
+    }
+  };
+
+  const handleDeleteCategory = async (categoryId: string) => {
+    try {
+      const supabase = createClient();
+      await supabase.from('categories').delete().eq('id', categoryId);
+      setCategoryList(categoryList.filter(c => c.id !== categoryId));
+    } catch (error) {
+      console.error('Error deleting category:', error);
+    }
+  };
+
+  const handleToggleCategory = async (categoryId: string, isActive: boolean) => {
+    try {
+      const supabase = createClient();
+      await supabase.from('categories').update({ is_active: !isActive }).eq('id', categoryId);
+      setCategoryList(categoryList.map(c => c.id === categoryId ? { ...c, is_active: !isActive } : c));
+    } catch (error) {
+      console.error('Error toggling category:', error);
+    }
+  };
 
   const handleToggleGateway = async (gateway: PaymentGateway) => {
     const supabase = createClient();
@@ -160,6 +225,7 @@ export default function AdminDashboardEnhanced({ user, stats, gatewaySettings }:
   const sidebarItems = [
     { icon: Activity, label: 'Overview', key: 'overview' as const },
     { icon: CreditCard, label: 'Payment Gateways', key: 'gateways' as const },
+    { icon: Tag, label: 'Categories', key: 'categories' as const },
     { icon: Users, label: 'Users', key: 'users' as const },
     { icon: FileText, label: 'Content', key: 'content' as const },
     { icon: DollarSign, label: 'Transactions', key: 'transactions' as const },
@@ -254,6 +320,7 @@ export default function AdminDashboardEnhanced({ user, stats, gatewaySettings }:
             <h1 className="text-3xl font-bold text-gray-900 font-display">
               {activeSection === 'overview' && 'Admin Dashboard'}
               {activeSection === 'gateways' && 'Payment Gateways'}
+              {activeSection === 'categories' && 'Category Management'}
               {activeSection === 'users' && 'User Management'}
               {activeSection === 'content' && 'Content Management'}
               {activeSection === 'transactions' && 'Transactions'}
@@ -264,6 +331,7 @@ export default function AdminDashboardEnhanced({ user, stats, gatewaySettings }:
             <p className="text-gray-500 mt-1">
               {activeSection === 'overview' && 'Monitor platform performance and statistics.'}
               {activeSection === 'gateways' && 'Configure and manage payment providers.'}
+              {activeSection === 'categories' && 'Add and manage content categories for creators.'}
               {activeSection === 'users' && 'View and manage all platform users.'}
               {activeSection === 'content' && 'Monitor and manage all content.'}
               {activeSection === 'transactions' && 'View all platform transactions.'}
@@ -574,6 +642,137 @@ export default function AdminDashboardEnhanced({ user, stats, gatewaySettings }:
                 </div>
               </div>
             ))}
+          </div>
+        )}
+
+        {/* Categories Section */}
+        {activeSection === 'categories' && (
+          <div className="space-y-6">
+            {/* Add New Category */}
+            <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
+              <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                <Plus className="w-5 h-5 text-blue-600" />
+                Add New Category
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Category Name</label>
+                  <input
+                    type="text"
+                    value={newCategory.name}
+                    onChange={(e) => setNewCategory({ ...newCategory, name: e.target.value })}
+                    placeholder="e.g., Technology"
+                    className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-300"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Color Badge</label>
+                  <select
+                    value={newCategory.color}
+                    onChange={(e) => setNewCategory({ ...newCategory, color: e.target.value })}
+                    className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-300"
+                  >
+                    <option value="blue">Blue</option>
+                    <option value="green">Green</option>
+                    <option value="violet">Violet</option>
+                    <option value="amber">Amber</option>
+                    <option value="red">Red</option>
+                    <option value="pink">Pink</option>
+                    <option value="cyan">Cyan</option>
+                    <option value="emerald">Emerald</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                  <input
+                    type="text"
+                    value={newCategory.description}
+                    onChange={(e) => setNewCategory({ ...newCategory, description: e.target.value })}
+                    placeholder="Brief description"
+                    className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-300"
+                  />
+                </div>
+              </div>
+              <div className="mt-4 flex justify-end">
+                <button
+                  onClick={handleAddCategory}
+                  disabled={addingCategory || !newCategory.name.trim()}
+                  className="px-6 py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center gap-2"
+                >
+                  {addingCategory && <Loader2 className="w-4 h-4 animate-spin" />}
+                  Add Category
+                </button>
+              </div>
+            </div>
+
+            {/* Category List */}
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+              <div className="p-4 border-b border-gray-100">
+                <h3 className="font-semibold text-gray-900">All Categories ({categoryList.length})</h3>
+              </div>
+              {loading ? (
+                <div className="p-12 text-center">
+                  <Loader2 className="w-8 h-8 text-gray-400 animate-spin mx-auto" />
+                </div>
+              ) : categoryList.length === 0 ? (
+                <div className="p-12 text-center">
+                  <Tag className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                  <p className="text-gray-500">No categories yet. Add one above.</p>
+                </div>
+              ) : (
+                <div className="divide-y divide-gray-50">
+                  {categoryList.map((category) => {
+                    const colorMap: Record<string, string> = {
+                      blue: 'bg-blue-100 text-blue-700',
+                      green: 'bg-green-100 text-green-700',
+                      violet: 'bg-violet-100 text-violet-700',
+                      amber: 'bg-amber-100 text-amber-700',
+                      red: 'bg-red-100 text-red-700',
+                      pink: 'bg-pink-100 text-pink-700',
+                      cyan: 'bg-cyan-100 text-cyan-700',
+                      emerald: 'bg-emerald-100 text-emerald-700',
+                    };
+                    return (
+                      <div key={category.id} className="p-4 flex items-center gap-4 hover:bg-gray-50">
+                        <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center">
+                          <Tag className="w-5 h-5 text-gray-500" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-gray-900">{category.name}</span>
+                            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${colorMap[category.color] || colorMap.blue}`}>
+                              {category.color}
+                            </span>
+                            {!category.is_active && (
+                              <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-500">Disabled</span>
+                            )}
+                          </div>
+                          <div className="text-sm text-gray-500">{category.description || category.slug}</div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleToggleCategory(category.id, category.is_active)}
+                            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                              category.is_active
+                                ? 'bg-green-50 text-green-700 hover:bg-green-100'
+                                : 'bg-gray-50 text-gray-500 hover:bg-gray-100'
+                            }`}
+                          >
+                            {category.is_active ? 'Active' : 'Inactive'}
+                          </button>
+                          <button
+                            onClick={() => handleDeleteCategory(category.id)}
+                            className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </div>
         )}
 

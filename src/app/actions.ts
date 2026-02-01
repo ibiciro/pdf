@@ -12,12 +12,14 @@ export interface ContentFormData {
   title: string;
   description: string;
   content_type: 'text' | 'pdf';
+  content_format?: 'written' | 'bullet_points';
   content_body?: string;
   pdf_url?: string;
   price_cents: number;
   session_duration_minutes: number;
   allow_download: boolean;
   download_price_cents?: number;
+  category_id?: string;
   status: 'draft' | 'published';
 }
 
@@ -35,6 +37,7 @@ export const createContentAction = async (data: ContentFormData) => {
     title: data.title,
     description: data.description,
     content_type: data.content_type,
+    content_format: data.content_format || 'written',
     content_body: data.content_body || null,
     pdf_url: data.pdf_url || null,
     price_cents: data.price_cents,
@@ -48,6 +51,9 @@ export const createContentAction = async (data: ContentFormData) => {
   }
   if (data.download_price_cents !== undefined) {
     insertData.download_price_cents = data.download_price_cents;
+  }
+  if (data.category_id) {
+    insertData.category_id = data.category_id;
   }
 
   const { data: content, error } = await supabase

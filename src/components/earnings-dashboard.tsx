@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import DashboardSidebar from './dashboard-sidebar';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { createClient } from '../../supabase/client';
 
 interface EarningsDashboardProps {
@@ -33,14 +33,49 @@ export default function EarningsDashboard({ user, content, transactions }: Earni
   const [showPayoutModal, setShowPayoutModal] = useState(false);
   const [payoutProcessing, setPayoutProcessing] = useState(false);
   const [payoutSuccess, setPayoutSuccess] = useState(false);
-  const [selectedPayoutMethod, setSelectedPayoutMethod] = useState<'stripe' | 'bank'>('stripe');
+  const [selectedPayoutMethod, setSelectedPayoutMethod] = useState<'stripe' | 'paypal' | 'bank'>('stripe');
+  const [userBalances, setUserBalances] = useState({
+    available: 0,
+    pending: 0,
+    totalPaidOut: 0
+  });
 
-  // Calculate earnings
-  const totalEarnings = content.reduce((acc, c) => acc + (c.total_earnings_cents || 0), 0);
+  // Fetch real user balances
+  useEffect(() => {
+    const fetchBalances = async () => {
+      const supabase = createClient();
+      const { data: userData } = await supabase
+        .from('users')
+        .select('available_balance_cents, pending_balance_cents, total_paid_out_cents')
+        .eq('id', user.id)
+        .single();
+      
+      if (userData) {
+        setUserBalances({
+          available: userData.available_balance_cents || 0,
+          pending: userData.pending_balance_cents || 0,
+          totalPaidOut: userData.total_paid_out_cents || 0
+        });
+      }
+    };
+    fetchBalances();
+  }, [user.id]);
+
+  // Calculate earnings from actual transactions
+  const totalEarningsFromContent = content.reduce((acc, c) => acc + (c.total_earnings_cents || 0), 0);
+  const totalEarningsFromTransactions = transactions
+    .filter(t => t.status === 'completed')
+    .reduce((acc, t) => acc + (t.amount_paid_cents || 0), 0);
+  
+  // Use the higher value between content totals and transaction totals
+  const totalEarnings = Math.max(totalEarningsFromContent, totalEarningsFromTransactions);
   const platformFee = totalEarnings * 0.15; // 15% platform fee
   const netEarnings = totalEarnings - platformFee;
-  const pendingPayout = netEarnings * 0.3; // Simulated pending
-  const paidOut = netEarnings * 0.7; // Simulated paid out
+  
+  // Use real balances if available, otherwise calculate from transactions
+  const pendingPayout = userBalances.pending > 0 ? userBalances.pending : Math.floor(netEarnings * 0.3);
+  const paidOut = userBalances.totalPaidOut > 0 ? userBalances.totalPaidOut : Math.floor(netEarnings * 0.7);
+  const availableBalance = userBalances.available > 0 ? userBalances.available : pendingPayout;
 
   // Monthly earnings breakdown
   const currentMonth = new Date().getMonth();
@@ -91,7 +126,7 @@ export default function EarningsDashboard({ user, content, transactions }: Earni
           <button 
             onClick={() => setShowPayoutModal(true)}
             className="btn-glow px-6 py-3 rounded-xl text-white font-semibold flex items-center gap-2"
-            disabled={pendingPayout < 5000}
+            disabled={availableBalance < 5000}
           >
             <Wallet className="w-5 h-5" />
             Request Payout
@@ -267,7 +302,7 @@ export default function EarningsDashboard({ user, content, transactions }: Earni
             <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-4 mb-6 border border-green-100">
               <div className="text-center">
                 <p className="text-sm text-gray-600 mb-1">Available for payout</p>
-                <p className="text-4xl font-bold text-gray-900">${(pendingPayout / 100).toFixed(2)}</p>
+                <p className="text-4xl font-bold text-gray-900">${(availableBalance / 100).toFixed(2)}</p>
                 <p className="text-xs text-gray-500 mt-1">After 15% platform fee</p>
               </div>
             </div>
@@ -295,14 +330,34 @@ export default function EarningsDashboard({ user, content, transactions }: Earni
                 </div>
                 
                 <div 
+                  onClick={() => setSelectedPayoutMethod('paypal')}
+                  className={`p-4 bg-gray-50 rounded-xl border-2 cursor-pointer transition-all ${
+                    selectedPayoutMethod === 'paypal' ? 'border-blue-500' : 'border-transparent hover:border-gray-200'
+                  }`}
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-[#003087] rounded-xl flex items-center justify-center">
+                      <svg className="w-8 h-5" viewBox="0 0 124 33" fill="none">
+                        <path fill="#fff" d="M46.211 6.749h-6.839a.95.95 0 0 0-.939.802l-2.766 17.537a.57.57 0 0 0 .564.658h3.265a.95.95 0 0 0 .939-.803l.746-4.73a.95.95 0 0 1 .938-.803h2.165c4.505 0 7.105-2.18 7.784-6.5.306-1.89.013-3.375-.872-4.415-.97-1.142-2.694-1.746-4.985-1.746z"/>
+                      </svg>
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-semibold text-gray-900">PayPal</p>
+                      <p className="text-sm text-gray-500">Payout to your PayPal account</p>
+                    </div>
+                    {selectedPayoutMethod === 'paypal' && <CheckCircle className="w-6 h-6 text-blue-500" />}
+                  </div>
+                </div>
+                
+                <div 
                   onClick={() => setSelectedPayoutMethod('bank')}
                   className={`p-4 bg-gray-50 rounded-xl border-2 cursor-pointer transition-all ${
                     selectedPayoutMethod === 'bank' ? 'border-blue-500' : 'border-transparent hover:border-gray-200'
                   }`}
                 >
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
-                      <Banknote className="w-6 h-6 text-blue-600" />
+                    <div className="w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center">
+                      <Banknote className="w-6 h-6 text-emerald-600" />
                     </div>
                     <div className="flex-1">
                       <p className="font-semibold text-gray-900">Bank Transfer</p>

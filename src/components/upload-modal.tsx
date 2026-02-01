@@ -1,23 +1,45 @@
 'use client';
 
-import { useState, useCallback, useRef } from 'react';
-import { X, Upload, FileText, Edit3, Clock, DollarSign, Loader2, Check, Download, Shield, AlertCircle } from 'lucide-react';
+import { useState, useCallback, useRef, useEffect } from 'react';
+import { X, Upload, FileText, Edit3, Clock, DollarSign, Loader2, Check, Download, Shield, AlertCircle, List, AlignLeft, Tag } from 'lucide-react';
 import { createContentAction } from '@/app/actions';
+import { createClient } from '../../supabase/client';
 
 interface UploadModalProps {
   onClose: () => void;
   onSuccess?: () => void;
 }
 
+interface Category {
+  id: string;
+  name: string;
+  slug: string;
+  color: string;
+}
+
+const CATEGORY_COLORS: Record<string, string> = {
+  blue: 'bg-blue-100 text-blue-700 border-blue-200',
+  green: 'bg-green-100 text-green-700 border-green-200',
+  violet: 'bg-violet-100 text-violet-700 border-violet-200',
+  amber: 'bg-amber-100 text-amber-700 border-amber-200',
+  red: 'bg-red-100 text-red-700 border-red-200',
+  pink: 'bg-pink-100 text-pink-700 border-pink-200',
+  cyan: 'bg-cyan-100 text-cyan-700 border-cyan-200',
+  emerald: 'bg-emerald-100 text-emerald-700 border-emerald-200',
+};
+
 export default function UploadModal({ onClose, onSuccess }: UploadModalProps) {
-  const [step, setStep] = useState<'choose' | 'upload' | 'write' | 'settings' | 'success'>('choose');
+  const [step, setStep] = useState<'choose' | 'format' | 'upload' | 'write' | 'settings' | 'success'>('choose');
   const [isDragging, setIsDragging] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [contentType, setContentType] = useState<'text' | 'pdf'>('text');
+  const [contentFormat, setContentFormat] = useState<'written' | 'bullet_points'>('written');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [formData, setFormData] = useState({
@@ -29,6 +51,23 @@ export default function UploadModal({ onClose, onSuccess }: UploadModalProps) {
     allowDownload: false,
     downloadPrice: '9.99',
   });
+
+  // Fetch categories on mount
+  useEffect(() => {
+    const fetchCategories = async () => {
+      const supabase = createClient();
+      const { data } = await supabase
+        .from('categories')
+        .select('id, name, slug, color')
+        .eq('is_active', true)
+        .order('display_order', { ascending: true });
+      
+      if (data) {
+        setCategories(data);
+      }
+    };
+    fetchCategories();
+  }, []);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -102,12 +141,14 @@ export default function UploadModal({ onClose, onSuccess }: UploadModalProps) {
         title: formData.title,
         description: formData.description,
         content_type: contentType,
+        content_format: contentFormat,
         content_body: contentType === 'text' ? formData.content : undefined,
         pdf_url: contentType === 'pdf' && selectedFile ? `uploads/${selectedFile.name}` : undefined,
         price_cents: priceInCents,
         session_duration_minutes: parseInt(formData.duration),
         allow_download: formData.allowDownload,
         download_price_cents: downloadPriceInCents,
+        category_id: selectedCategory || undefined,
         status: saveAsDraft ? 'draft' : 'published',
       });
 
@@ -184,7 +225,7 @@ export default function UploadModal({ onClose, onSuccess }: UploadModalProps) {
                 <button
                   onClick={() => {
                     setContentType('text');
-                    setStep('write');
+                    setStep('format');
                   }}
                   className="bg-gray-50 border border-gray-200 rounded-xl p-8 text-center hover:bg-gray-100 hover:border-gray-300 transition-all group"
                 >
@@ -193,6 +234,111 @@ export default function UploadModal({ onClose, onSuccess }: UploadModalProps) {
                   </div>
                   <h4 className="font-semibold text-gray-900 mb-2">Write Text</h4>
                   <p className="text-sm text-gray-500">Create text content using our editor</p>
+                </button>
+              </div>
+            </div>
+          </>
+        ) : step === 'format' ? (
+          <>
+            <div className="p-6 border-b border-gray-100">
+              <h3 className="text-xl font-bold text-gray-900 font-display">Choose Content Format</h3>
+              <p className="text-gray-500 text-sm mt-1">How would you like to structure your content?</p>
+            </div>
+            
+            <div className="p-6">
+              <div className="grid grid-cols-2 gap-4 mb-6">
+                <button
+                  onClick={() => setContentFormat('written')}
+                  className={`p-6 border-2 rounded-xl text-left transition-all ${
+                    contentFormat === 'written' 
+                      ? 'border-violet-500 bg-violet-50' 
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <div className={`w-12 h-12 mb-4 rounded-lg flex items-center justify-center ${
+                    contentFormat === 'written' ? 'bg-violet-100' : 'bg-gray-100'
+                  }`}>
+                    <AlignLeft className={`w-6 h-6 ${contentFormat === 'written' ? 'text-violet-600' : 'text-gray-500'}`} />
+                  </div>
+                  <h4 className="font-semibold text-gray-900 mb-1">Written Article</h4>
+                  <p className="text-sm text-gray-500">Long-form written content with paragraphs</p>
+                  <div className="mt-3 space-y-1">
+                    <div className="h-2 bg-gray-200 rounded-full w-full" />
+                    <div className="h-2 bg-gray-200 rounded-full w-4/5" />
+                    <div className="h-2 bg-gray-200 rounded-full w-3/5" />
+                  </div>
+                </button>
+                
+                <button
+                  onClick={() => setContentFormat('bullet_points')}
+                  className={`p-6 border-2 rounded-xl text-left transition-all ${
+                    contentFormat === 'bullet_points' 
+                      ? 'border-violet-500 bg-violet-50' 
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <div className={`w-12 h-12 mb-4 rounded-lg flex items-center justify-center ${
+                    contentFormat === 'bullet_points' ? 'bg-violet-100' : 'bg-gray-100'
+                  }`}>
+                    <List className={`w-6 h-6 ${contentFormat === 'bullet_points' ? 'text-violet-600' : 'text-gray-500'}`} />
+                  </div>
+                  <h4 className="font-semibold text-gray-900 mb-1">Bullet Points</h4>
+                  <p className="text-sm text-gray-500">Key points, steps, or checklist format</p>
+                  <div className="mt-3 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <div className="w-1.5 h-1.5 bg-gray-400 rounded-full" />
+                      <div className="h-2 bg-gray-200 rounded-full flex-1" />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-1.5 h-1.5 bg-gray-400 rounded-full" />
+                      <div className="h-2 bg-gray-200 rounded-full flex-1 w-4/5" />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-1.5 h-1.5 bg-gray-400 rounded-full" />
+                      <div className="h-2 bg-gray-200 rounded-full flex-1 w-3/5" />
+                    </div>
+                  </div>
+                </button>
+              </div>
+              
+              {/* Category Selection */}
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
+                  <Tag className="w-4 h-4" />
+                  Select Category
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {categories.map((category) => (
+                    <button
+                      key={category.id}
+                      onClick={() => setSelectedCategory(category.id === selectedCategory ? null : category.id)}
+                      className={`px-4 py-2 rounded-full text-sm font-medium border transition-all ${
+                        selectedCategory === category.id
+                          ? CATEGORY_COLORS[category.color || 'blue'] + ' shadow-md scale-105'
+                          : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100'
+                      }`}
+                    >
+                      {category.name}
+                    </button>
+                  ))}
+                </div>
+                {categories.length === 0 && (
+                  <p className="text-sm text-gray-400 mt-2">No categories available. Contact admin to add categories.</p>
+                )}
+              </div>
+              
+              <div className="flex justify-between items-center pt-4 border-t border-gray-100">
+                <button
+                  onClick={() => setStep('choose')}
+                  className="text-gray-500 hover:text-gray-700 text-sm font-medium"
+                >
+                  ← Back
+                </button>
+                <button
+                  onClick={() => setStep('write')}
+                  className="btn-glow px-6 py-3 rounded-xl text-white font-semibold"
+                >
+                  Continue
                 </button>
               </div>
             </div>
@@ -305,10 +451,10 @@ export default function UploadModal({ onClose, onSuccess }: UploadModalProps) {
               
               <div className="flex justify-between items-center pt-2">
                 <button
-                  onClick={() => setStep('choose')}
+                  onClick={() => setStep('format')}
                   className="text-gray-500 hover:text-gray-700 text-sm font-medium"
                 >
-                  ← Back to options
+                  ← Back to format
                 </button>
                 <button
                   onClick={() => setStep('settings')}
@@ -385,6 +531,32 @@ export default function UploadModal({ onClose, onSuccess }: UploadModalProps) {
                 </div>
               </div>
 
+              {/* Category Selection (for PDFs) */}
+              {contentType === 'pdf' && categories.length > 0 && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                    <Tag className="w-4 h-4" />
+                    Category
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {categories.map((category) => (
+                      <button
+                        key={category.id}
+                        type="button"
+                        onClick={() => setSelectedCategory(category.id === selectedCategory ? null : category.id)}
+                        className={`px-4 py-2 rounded-full text-sm font-medium border transition-all ${
+                          selectedCategory === category.id
+                            ? CATEGORY_COLORS[category.color || 'blue'] + ' shadow-md'
+                            : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100'
+                        }`}
+                      >
+                        {category.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Download Option */}
               <div className="p-4 bg-gradient-to-r from-violet-50 to-purple-50 rounded-xl border border-violet-200">
                 <div className="flex items-center justify-between mb-3">
@@ -454,7 +626,7 @@ export default function UploadModal({ onClose, onSuccess }: UploadModalProps) {
 
               {/* Content Type Badge */}
               <div className="p-4 bg-gray-50 rounded-xl border border-gray-200">
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 mb-3">
                   <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
                     contentType === 'pdf' ? 'bg-red-100' : 'bg-violet-100'
                   }`}>
@@ -462,7 +634,7 @@ export default function UploadModal({ onClose, onSuccess }: UploadModalProps) {
                       contentType === 'pdf' ? 'text-red-600' : 'text-violet-600'
                     }`} />
                   </div>
-                  <div>
+                  <div className="flex-1">
                     <div className="font-medium text-gray-900">
                       {contentType === 'pdf' ? 'PDF Document' : 'Text Article'}
                     </div>
@@ -472,6 +644,25 @@ export default function UploadModal({ onClose, onSuccess }: UploadModalProps) {
                         : `${formData.content.length} characters`}
                     </div>
                   </div>
+                </div>
+                
+                {/* Format & Category */}
+                <div className="flex flex-wrap gap-2">
+                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                    contentFormat === 'bullet_points'
+                      ? 'bg-amber-100 text-amber-700'
+                      : 'bg-violet-100 text-violet-700'
+                  }`}>
+                    {contentFormat === 'bullet_points' ? 'Bullet Points' : 'Written Article'}
+                  </span>
+                  
+                  {selectedCategory && categories.find(c => c.id === selectedCategory) && (
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium border ${
+                      CATEGORY_COLORS[categories.find(c => c.id === selectedCategory)?.color || 'blue']
+                    }`}>
+                      {categories.find(c => c.id === selectedCategory)?.name}
+                    </span>
+                  )}
                 </div>
               </div>
 

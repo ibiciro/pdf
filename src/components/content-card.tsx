@@ -16,6 +16,8 @@ interface ContentCardProps {
   readCount: number;
   likeCount: number;
   contentType?: 'text' | 'pdf';
+  category?: string;
+  categoryColor?: string;
   qualityRatings?: {
     facts: number;
     works: number;
@@ -36,7 +38,22 @@ export default function ContentCard({
   reviewCount,
   readCount,
   contentType = 'text',
+  category,
+  categoryColor,
 }: ContentCardProps) {
+  const getCategoryColorClass = (color?: string) => {
+    const colorMap: Record<string, string> = {
+      blue: 'bg-blue-100 text-blue-700',
+      green: 'bg-green-100 text-green-700',
+      violet: 'bg-violet-100 text-violet-700',
+      amber: 'bg-amber-100 text-amber-700',
+      red: 'bg-red-100 text-red-700',
+      pink: 'bg-pink-100 text-pink-700',
+      cyan: 'bg-cyan-100 text-cyan-700',
+      emerald: 'bg-emerald-100 text-emerald-700',
+    };
+    return colorMap[color || 'blue'] || colorMap.blue;
+  };
   return (
     <Link href={`/content/${id}`}>
       <div className="group cursor-pointer bg-white rounded-xl border border-gray-100 overflow-hidden hover:shadow-md transition-shadow">
@@ -62,6 +79,13 @@ export default function ContentCard({
         
         {/* Content info */}
         <div className="p-4">
+          {/* Category badge */}
+          {category && (
+            <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium mb-2 ${getCategoryColorClass(categoryColor)}`}>
+              {category}
+            </span>
+          )}
+          
           <h3 className="text-base font-semibold text-gray-900 mb-2 line-clamp-2 group-hover:text-gray-600 transition-colors">
             {title}
           </h3>
