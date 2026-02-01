@@ -65,37 +65,115 @@ export default function ReaderView({ content }: ReaderViewProps) {
     return 'normal';
   };
 
-  // Parse markdown-like content to HTML
+  // Parse markdown-like content to HTML with better bullet point handling
   const renderContent = (text: string) => {
-    return text
-      .split('\n')
-      .map((line, index) => {
-        if (line.startsWith('# ')) {
-          return <h1 key={index} className="text-4xl font-bold font-display text-white mb-8 mt-12 first:mt-0">{line.slice(2)}</h1>;
+    const lines = text.split('\n');
+    const elements: JSX.Element[] = [];
+    let listItems: { type: 'ul' | 'ol', items: string[] } | null = null;
+
+    lines.forEach((line, index) => {
+      // Check if this is a list item
+      const isUnorderedItem = line.startsWith('- ') || line.startsWith('• ') || line.startsWith('* ');
+      const orderedMatch = line.match(/^(\d+)\.\s+(.*)$/);
+      const isOrderedItem = !!orderedMatch;
+
+      // If we were building a list and this line is not a list item, close the list
+      if (listItems && !isUnorderedItem && !isOrderedItem) {
+        if (listItems.type === 'ul') {
+          elements.push(
+            <ul key={`list-${index}`} className="space-y-2 my-4 ml-4">
+              {listItems.items.map((item, i) => (
+                <li key={i} className="flex items-start gap-3 text-gray-300 leading-relaxed">
+                  <span className="w-2 h-2 mt-2.5 bg-cyan-400 rounded-full flex-shrink-0" />
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ul>
+          );
+        } else {
+          elements.push(
+            <ol key={`list-${index}`} className="space-y-2 my-4 ml-4">
+              {listItems.items.map((item, i) => (
+                <li key={i} className="flex items-start gap-3 text-gray-300 leading-relaxed">
+                  <span className="w-6 h-6 mt-1 bg-cyan-500/20 text-cyan-400 rounded-full flex-shrink-0 flex items-center justify-center text-sm font-semibold">
+                    {i + 1}
+                  </span>
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ol>
+          );
         }
-        if (line.startsWith('## ')) {
-          return <h2 key={index} className="text-2xl font-bold font-display text-white mb-6 mt-10">{line.slice(3)}</h2>;
+        listItems = null;
+      }
+
+      // Handle list items
+      if (isUnorderedItem) {
+        const itemText = line.slice(2).trim();
+        if (!listItems || listItems.type !== 'ul') {
+          listItems = { type: 'ul', items: [] };
         }
-        if (line.startsWith('### ')) {
-          return <h3 key={index} className="text-xl font-semibold text-white mb-4 mt-8">{line.slice(4)}</h3>;
+        listItems.items.push(itemText);
+        return;
+      }
+
+      if (isOrderedItem && orderedMatch) {
+        const itemText = orderedMatch[2];
+        if (!listItems || listItems.type !== 'ol') {
+          listItems = { type: 'ol', items: [] };
         }
-        if (line.startsWith('- ')) {
-          return <li key={index} className="text-gray-300 ml-6 mb-2 list-disc">{line.slice(2)}</li>;
-        }
-        if (line.startsWith('1. ') || line.startsWith('2. ') || line.startsWith('3. ') || line.startsWith('4. ')) {
-          return <li key={index} className="text-gray-300 ml-6 mb-2 list-decimal">{line.slice(3)}</li>;
-        }
-        if (line.startsWith('*') && line.endsWith('*')) {
-          return <p key={index} className="text-gray-400 italic mb-4">{line.slice(1, -1)}</p>;
-        }
-        if (line.startsWith('---')) {
-          return <hr key={index} className="border-white/10 my-8" />;
-        }
-        if (line.trim() === '') {
-          return <div key={index} className="h-4" />;
-        }
-        return <p key={index} className="text-gray-300 leading-relaxed mb-4 font-reading text-lg">{line}</p>;
-      });
+        listItems.items.push(itemText);
+        return;
+      }
+
+      // Handle other elements
+      if (line.startsWith('# ')) {
+        elements.push(<h1 key={index} className="text-4xl font-bold font-display text-white mb-8 mt-12 first:mt-0">{line.slice(2)}</h1>);
+      } else if (line.startsWith('## ')) {
+        elements.push(<h2 key={index} className="text-2xl font-bold font-display text-white mb-6 mt-10">{line.slice(3)}</h2>);
+      } else if (line.startsWith('### ')) {
+        elements.push(<h3 key={index} className="text-xl font-semibold text-white mb-4 mt-8">{line.slice(4)}</h3>);
+      } else if (line.startsWith('*') && line.endsWith('*')) {
+        elements.push(<p key={index} className="text-gray-400 italic mb-4">{line.slice(1, -1)}</p>);
+      } else if (line.startsWith('---')) {
+        elements.push(<hr key={index} className="border-white/10 my-8" />);
+      } else if (line.trim() === '') {
+        elements.push(<div key={index} className="h-4" />);
+      } else {
+        elements.push(<p key={index} className="text-gray-300 leading-relaxed mb-4 font-reading text-lg">{line}</p>);
+      }
+    });
+
+    // Close any remaining list
+    if (listItems) {
+      if (listItems.type === 'ul') {
+        elements.push(
+          <ul key="final-list" className="space-y-2 my-4 ml-4">
+            {listItems.items.map((item, i) => (
+              <li key={i} className="flex items-start gap-3 text-gray-300 leading-relaxed">
+                <span className="w-2 h-2 mt-2.5 bg-cyan-400 rounded-full flex-shrink-0" />
+                <span>{item}</span>
+              </li>
+            ))}
+          </ul>
+        );
+      } else {
+        elements.push(
+          <ol key="final-list" className="space-y-2 my-4 ml-4">
+            {listItems.items.map((item, i) => (
+              <li key={i} className="flex items-start gap-3 text-gray-300 leading-relaxed">
+                <span className="w-6 h-6 mt-1 bg-cyan-500/20 text-cyan-400 rounded-full flex-shrink-0 flex items-center justify-center text-sm font-semibold">
+                  {i + 1}
+                </span>
+                <span>{item}</span>
+              </li>
+            ))}
+          </ol>
+        );
+      }
+    }
+
+    return elements;
   };
 
   return (

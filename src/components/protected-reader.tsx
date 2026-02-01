@@ -129,37 +129,143 @@ export default function ProtectedReader({ content, user }: ProtectedReaderProps)
     // API call would go here
   };
 
-  // Parse markdown-like content to HTML
+  // Parse markdown-like content to HTML with better bullet point handling
   const renderContent = (text: string) => {
-    return text
-      .split('\n')
-      .map((line, index) => {
-        if (line.startsWith('# ')) {
-          return <h1 key={index} className="text-3xl font-bold font-display text-gray-900 mb-6 mt-10 first:mt-0">{line.slice(2)}</h1>;
+    const lines = text.split('\n');
+    const elements: JSX.Element[] = [];
+    let listItems: { type: 'ul' | 'ol', items: string[] } | null = null;
+
+    lines.forEach((line, index) => {
+      // Check if this is a list item
+      const isUnorderedItem = line.startsWith('- ') || line.startsWith('• ') || line.startsWith('* ');
+      const orderedMatch = line.match(/^(\d+)\.\s+(.*)$/);
+      const isOrderedItem = !!orderedMatch;
+
+      // If we were building a list and this line is not a list item, close the list
+      if (listItems && !isUnorderedItem && !isOrderedItem) {
+        if (listItems.type === 'ul') {
+          elements.push(
+            <ul key={`list-${index}`} className="space-y-2 my-4 ml-4">
+              {listItems.items.map((item, i) => (
+                <li key={i} className="flex items-start gap-3 text-gray-700 leading-relaxed">
+                  <span className="w-2 h-2 mt-2.5 bg-blue-500 rounded-full flex-shrink-0" />
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ul>
+          );
+        } else {
+          elements.push(
+            <ol key={`list-${index}`} className="space-y-2 my-4 ml-4 counter-reset-list">
+              {listItems.items.map((item, i) => (
+                <li key={i} className="flex items-start gap-3 text-gray-700 leading-relaxed">
+                  <span className="w-6 h-6 mt-1 bg-blue-100 text-blue-700 rounded-full flex-shrink-0 flex items-center justify-center text-sm font-semibold">
+                    {i + 1}
+                  </span>
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ol>
+          );
         }
-        if (line.startsWith('## ')) {
-          return <h2 key={index} className="text-2xl font-bold font-display text-gray-800 mb-4 mt-8">{line.slice(3)}</h2>;
+        listItems = null;
+      }
+
+      // Handle list items
+      if (isUnorderedItem) {
+        const itemText = line.slice(2).trim();
+        if (!listItems || listItems.type !== 'ul') {
+          if (listItems) {
+            // Close previous ordered list
+            elements.push(
+              <ol key={`list-${index}`} className="space-y-2 my-4 ml-4">
+                {listItems.items.map((item, i) => (
+                  <li key={i} className="flex items-start gap-3 text-gray-700 leading-relaxed">
+                    <span className="w-6 h-6 mt-1 bg-blue-100 text-blue-700 rounded-full flex-shrink-0 flex items-center justify-center text-sm font-semibold">
+                      {i + 1}
+                    </span>
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ol>
+            );
+          }
+          listItems = { type: 'ul', items: [] };
         }
-        if (line.startsWith('### ')) {
-          return <h3 key={index} className="text-xl font-semibold text-gray-800 mb-3 mt-6">{line.slice(4)}</h3>;
+        listItems.items.push(itemText);
+        return;
+      }
+
+      if (isOrderedItem && orderedMatch) {
+        const itemText = orderedMatch[2];
+        if (!listItems || listItems.type !== 'ol') {
+          if (listItems) {
+            // Close previous unordered list
+            elements.push(
+              <ul key={`list-${index}`} className="space-y-2 my-4 ml-4">
+                {listItems.items.map((item, i) => (
+                  <li key={i} className="flex items-start gap-3 text-gray-700 leading-relaxed">
+                    <span className="w-2 h-2 mt-2.5 bg-blue-500 rounded-full flex-shrink-0" />
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            );
+          }
+          listItems = { type: 'ol', items: [] };
         }
-        if (line.startsWith('- ')) {
-          return <li key={index} className="text-gray-700 ml-6 mb-2 list-disc">{line.slice(2)}</li>;
-        }
-        if (line.startsWith('1. ') || line.startsWith('2. ') || line.startsWith('3. ') || line.startsWith('4. ')) {
-          return <li key={index} className="text-gray-700 ml-6 mb-2 list-decimal">{line.slice(3)}</li>;
-        }
-        if (line.startsWith('*') && line.endsWith('*')) {
-          return <p key={index} className="text-gray-500 italic mb-4">{line.slice(1, -1)}</p>;
-        }
-        if (line.startsWith('---')) {
-          return <hr key={index} className="border-gray-200 my-8" />;
-        }
-        if (line.trim() === '') {
-          return <div key={index} className="h-4" />;
-        }
-        return <p key={index} className="text-gray-700 leading-relaxed mb-4 font-reading text-lg">{line}</p>;
-      });
+        listItems.items.push(itemText);
+        return;
+      }
+
+      // Handle other elements
+      if (line.startsWith('# ')) {
+        elements.push(<h1 key={index} className="text-3xl font-bold font-display text-gray-900 mb-6 mt-10 first:mt-0">{line.slice(2)}</h1>);
+      } else if (line.startsWith('## ')) {
+        elements.push(<h2 key={index} className="text-2xl font-bold font-display text-gray-800 mb-4 mt-8">{line.slice(3)}</h2>);
+      } else if (line.startsWith('### ')) {
+        elements.push(<h3 key={index} className="text-xl font-semibold text-gray-800 mb-3 mt-6">{line.slice(4)}</h3>);
+      } else if (line.startsWith('*') && line.endsWith('*')) {
+        elements.push(<p key={index} className="text-gray-500 italic mb-4">{line.slice(1, -1)}</p>);
+      } else if (line.startsWith('---')) {
+        elements.push(<hr key={index} className="border-gray-200 my-8" />);
+      } else if (line.trim() === '') {
+        elements.push(<div key={index} className="h-4" />);
+      } else {
+        elements.push(<p key={index} className="text-gray-700 leading-relaxed mb-4 font-reading text-lg">{line}</p>);
+      }
+    });
+
+    // Close any remaining list
+    if (listItems) {
+      if (listItems.type === 'ul') {
+        elements.push(
+          <ul key="final-list" className="space-y-2 my-4 ml-4">
+            {listItems.items.map((item, i) => (
+              <li key={i} className="flex items-start gap-3 text-gray-700 leading-relaxed">
+                <span className="w-2 h-2 mt-2.5 bg-blue-500 rounded-full flex-shrink-0" />
+                <span>{item}</span>
+              </li>
+            ))}
+          </ul>
+        );
+      } else {
+        elements.push(
+          <ol key="final-list" className="space-y-2 my-4 ml-4">
+            {listItems.items.map((item, i) => (
+              <li key={i} className="flex items-start gap-3 text-gray-700 leading-relaxed">
+                <span className="w-6 h-6 mt-1 bg-blue-100 text-blue-700 rounded-full flex-shrink-0 flex items-center justify-center text-sm font-semibold">
+                  {i + 1}
+                </span>
+                <span>{item}</span>
+              </li>
+            ))}
+          </ol>
+        );
+      }
+    }
+
+    return elements;
   };
 
   // Generate watermark SVG

@@ -552,50 +552,138 @@ export default function AdminDashboardEnhanced({ user, stats, gatewaySettings }:
                         </div>
                       )}
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Public Key / Client ID
-                          </label>
-                          <input
-                            type="text"
-                            value={gateway.publicKey || ''}
-                            onChange={(e) => setGateways(prev => ({
-                              ...prev,
-                              [key]: { ...prev[key], publicKey: e.target.value }
-                            }))}
-                            placeholder={`pk_live_... or pk_test_...`}
-                            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
-                          />
-                          <p className="text-xs text-gray-400 mt-1">
-                            Found in your {gateway.name} dashboard under API keys
-                          </p>
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Secret Key
-                          </label>
-                          <div className="relative">
-                            <input
-                              type={showSecrets[key] ? 'text' : 'password'}
-                              value={gatewaySecrets[key] || ''}
-                              onChange={(e) => setGatewaySecrets(prev => ({ ...prev, [key]: e.target.value }))}
-                              placeholder={`sk_live_... or sk_test_...`}
-                              className="w-full px-4 py-3 pr-12 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => setShowSecrets(prev => ({ ...prev, [key]: !prev[key] }))}
-                              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                            >
-                              {showSecrets[key] ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                            </button>
+                      {/* PayPal-specific configuration */}
+                      {key === 'paypal' ? (
+                        <div className="space-y-4">
+                          <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl mb-4">
+                            <p className="text-sm text-blue-800 font-medium mb-1">PayPal Setup Instructions</p>
+                            <p className="text-xs text-blue-600">
+                              1. Go to <a href="https://developer.paypal.com/dashboard/applications" target="_blank" rel="noopener noreferrer" className="underline">PayPal Developer Dashboard</a><br/>
+                              2. Create a new REST API app (or use existing)<br/>
+                              3. Copy the Client ID and Secret below
+                            </p>
                           </div>
-                          <p className="text-xs text-gray-400 mt-1">
-                            Keep this secret! Never share publicly.
-                          </p>
+                          
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                PayPal Client ID
+                              </label>
+                              <input
+                                type="text"
+                                value={gateway.publicKey || ''}
+                                onChange={(e) => setGateways(prev => ({
+                                  ...prev,
+                                  [key]: { ...prev[key], publicKey: e.target.value }
+                                }))}
+                                placeholder="AaBbCcDd... (from PayPal Developer Dashboard)"
+                                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
+                              />
+                              <p className="text-xs text-gray-400 mt-1">
+                                Found in your PayPal Developer app credentials
+                              </p>
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                PayPal Client Secret
+                              </label>
+                              <div className="relative">
+                                <input
+                                  type={showSecrets[key] ? 'text' : 'password'}
+                                  value={gatewaySecrets[key] || ''}
+                                  onChange={(e) => setGatewaySecrets(prev => ({ ...prev, [key]: e.target.value }))}
+                                  placeholder="EeFfGgHh... (keep this secret!)"
+                                  className="w-full px-4 py-3 pr-12 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => setShowSecrets(prev => ({ ...prev, [key]: !prev[key] }))}
+                                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                                >
+                                  {showSecrets[key] ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                                </button>
+                              </div>
+                              <p className="text-xs text-gray-400 mt-1">
+                                Keep this secret! Never share publicly.
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Sandbox Mode Toggle */}
+                          <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="font-medium text-gray-900">Sandbox Mode</p>
+                                <p className="text-sm text-gray-500">Enable for testing with fake payments</p>
+                              </div>
+                              <button
+                                onClick={() => {
+                                  // Toggle sandbox mode in state if needed
+                                }}
+                                className="relative w-14 h-7 rounded-full bg-amber-400 transition-colors"
+                              >
+                                <div className="absolute top-1 left-1 w-5 h-5 bg-white rounded-full shadow-md" />
+                              </button>
+                            </div>
+                            <p className="text-xs text-amber-600 mt-2">
+                              ⚠️ Use sandbox credentials when testing. Switch to live credentials for production.
+                            </p>
+                          </div>
+
+                          {/* Creator Payout Info */}
+                          <div className="p-4 bg-green-50 border border-green-200 rounded-xl">
+                            <p className="text-sm text-green-800 font-medium mb-1">Creator Payouts via PayPal</p>
+                            <p className="text-xs text-green-600">
+                              Creators will receive 85% of each transaction. They enter their PayPal email in Settings → Payment to receive payouts.
+                            </p>
+                          </div>
                         </div>
-                      </div>
+                      ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Public Key / Client ID
+                            </label>
+                            <input
+                              type="text"
+                              value={gateway.publicKey || ''}
+                              onChange={(e) => setGateways(prev => ({
+                                ...prev,
+                                [key]: { ...prev[key], publicKey: e.target.value }
+                              }))}
+                              placeholder={`pk_live_... or pk_test_...`}
+                              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
+                            />
+                            <p className="text-xs text-gray-400 mt-1">
+                              Found in your {gateway.name} dashboard under API keys
+                            </p>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Secret Key
+                            </label>
+                            <div className="relative">
+                              <input
+                                type={showSecrets[key] ? 'text' : 'password'}
+                                value={gatewaySecrets[key] || ''}
+                                onChange={(e) => setGatewaySecrets(prev => ({ ...prev, [key]: e.target.value }))}
+                                placeholder={`sk_live_... or sk_test_...`}
+                                className="w-full px-4 py-3 pr-12 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setShowSecrets(prev => ({ ...prev, [key]: !prev[key] }))}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                              >
+                                {showSecrets[key] ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                              </button>
+                            </div>
+                            <p className="text-xs text-gray-400 mt-1">
+                              Keep this secret! Never share publicly.
+                            </p>
+                          </div>
+                        </div>
+                      )}
 
                       {/* Webhook Configuration */}
                       <div className="mt-4 p-4 bg-gray-50 rounded-xl">
@@ -606,11 +694,11 @@ export default function AdminDashboardEnhanced({ user, stats, gatewaySettings }:
                           <input
                             type="text"
                             readOnly
-                            value={`https://yourdomain.com/api/webhooks/${key}`}
+                            value={`https://b8f9a61b-c7b6-4928-b627-942cc24a5ce9.canvases.tempo.build/api/webhooks/${key}`}
                             className="flex-1 px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-mono text-gray-600"
                           />
                           <button
-                            onClick={() => navigator.clipboard.writeText(`https://yourdomain.com/api/webhooks/${key}`)}
+                            onClick={() => navigator.clipboard.writeText(`https://b8f9a61b-c7b6-4928-b627-942cc24a5ce9.canvases.tempo.build/api/webhooks/${key}`)}
                             className="px-4 py-2 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 text-sm font-medium"
                           >
                             Copy
@@ -654,7 +742,7 @@ export default function AdminDashboardEnhanced({ user, stats, gatewaySettings }:
                 <Plus className="w-5 h-5 text-blue-600" />
                 Add New Category
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Category Name</label>
                   <input
@@ -666,33 +754,69 @@ export default function AdminDashboardEnhanced({ user, stats, gatewaySettings }:
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Color Badge</label>
-                  <select
-                    value={newCategory.color}
-                    onChange={(e) => setNewCategory({ ...newCategory, color: e.target.value })}
-                    className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-300"
-                  >
-                    <option value="blue">Blue</option>
-                    <option value="green">Green</option>
-                    <option value="violet">Violet</option>
-                    <option value="amber">Amber</option>
-                    <option value="red">Red</option>
-                    <option value="pink">Pink</option>
-                    <option value="cyan">Cyan</option>
-                    <option value="emerald">Emerald</option>
-                  </select>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Badge Color</label>
+                  <div className="relative">
+                    <select
+                      value={newCategory.color}
+                      onChange={(e) => setNewCategory({ ...newCategory, color: e.target.value })}
+                      className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-300 appearance-none"
+                    >
+                      <option value="blue">Blue</option>
+                      <option value="green">Green</option>
+                      <option value="violet">Violet</option>
+                      <option value="amber">Amber</option>
+                      <option value="red">Red</option>
+                      <option value="pink">Pink</option>
+                      <option value="cyan">Cyan</option>
+                      <option value="emerald">Emerald</option>
+                      <option value="indigo">Indigo</option>
+                      <option value="orange">Orange</option>
+                      <option value="teal">Teal</option>
+                      <option value="rose">Rose</option>
+                    </select>
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                      <ChevronDown className="w-4 h-4 text-gray-400" />
+                    </div>
+                  </div>
                 </div>
-                <div>
+                <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
                   <input
                     type="text"
                     value={newCategory.description}
                     onChange={(e) => setNewCategory({ ...newCategory, description: e.target.value })}
-                    placeholder="Brief description"
+                    placeholder="Brief description of this category"
                     className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-300"
                   />
                 </div>
               </div>
+              
+              {/* Color Preview */}
+              <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-100">
+                <p className="text-sm text-gray-500 mb-2">Preview:</p>
+                <div className="flex items-center gap-3">
+                  <span className={`px-3 py-1.5 rounded-full text-sm font-medium ${
+                    {
+                      blue: 'bg-blue-100 text-blue-700',
+                      green: 'bg-green-100 text-green-700',
+                      violet: 'bg-violet-100 text-violet-700',
+                      amber: 'bg-amber-100 text-amber-700',
+                      red: 'bg-red-100 text-red-700',
+                      pink: 'bg-pink-100 text-pink-700',
+                      cyan: 'bg-cyan-100 text-cyan-700',
+                      emerald: 'bg-emerald-100 text-emerald-700',
+                      indigo: 'bg-indigo-100 text-indigo-700',
+                      orange: 'bg-orange-100 text-orange-700',
+                      teal: 'bg-teal-100 text-teal-700',
+                      rose: 'bg-rose-100 text-rose-700',
+                    }[newCategory.color] || 'bg-blue-100 text-blue-700'
+                  }`}>
+                    {newCategory.name || 'Category Name'}
+                  </span>
+                  <span className="text-sm text-gray-400">← How it will appear on content cards</span>
+                </div>
+              </div>
+              
               <div className="mt-4 flex justify-end">
                 <button
                   onClick={handleAddCategory}
@@ -707,8 +831,9 @@ export default function AdminDashboardEnhanced({ user, stats, gatewaySettings }:
 
             {/* Category List */}
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-              <div className="p-4 border-b border-gray-100">
+              <div className="p-4 border-b border-gray-100 flex items-center justify-between">
                 <h3 className="font-semibold text-gray-900">All Categories ({categoryList.length})</h3>
+                <p className="text-sm text-gray-500">Creators can select these when uploading content</p>
               </div>
               {loading ? (
                 <div className="p-12 text-center">
@@ -731,16 +856,50 @@ export default function AdminDashboardEnhanced({ user, stats, gatewaySettings }:
                       pink: 'bg-pink-100 text-pink-700',
                       cyan: 'bg-cyan-100 text-cyan-700',
                       emerald: 'bg-emerald-100 text-emerald-700',
+                      indigo: 'bg-indigo-100 text-indigo-700',
+                      orange: 'bg-orange-100 text-orange-700',
+                      teal: 'bg-teal-100 text-teal-700',
+                      rose: 'bg-rose-100 text-rose-700',
                     };
                     return (
                       <div key={category.id} className="p-4 flex items-center gap-4 hover:bg-gray-50">
-                        <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center">
-                          <Tag className="w-5 h-5 text-gray-500" />
+                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                          {
+                            blue: 'bg-blue-50',
+                            green: 'bg-green-50',
+                            violet: 'bg-violet-50',
+                            amber: 'bg-amber-50',
+                            red: 'bg-red-50',
+                            pink: 'bg-pink-50',
+                            cyan: 'bg-cyan-50',
+                            emerald: 'bg-emerald-50',
+                            indigo: 'bg-indigo-50',
+                            orange: 'bg-orange-50',
+                            teal: 'bg-teal-50',
+                            rose: 'bg-rose-50',
+                          }[category.color] || 'bg-gray-100'
+                        }`}>
+                          <Palette className={`w-5 h-5 ${
+                            {
+                              blue: 'text-blue-500',
+                              green: 'text-green-500',
+                              violet: 'text-violet-500',
+                              amber: 'text-amber-500',
+                              red: 'text-red-500',
+                              pink: 'text-pink-500',
+                              cyan: 'text-cyan-500',
+                              emerald: 'text-emerald-500',
+                              indigo: 'text-indigo-500',
+                              orange: 'text-orange-500',
+                              teal: 'text-teal-500',
+                              rose: 'text-rose-500',
+                            }[category.color] || 'text-gray-500'
+                          }`} />
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
                             <span className="font-medium text-gray-900">{category.name}</span>
-                            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${colorMap[category.color] || colorMap.blue}`}>
+                            <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${colorMap[category.color] || colorMap.blue}`}>
                               {category.color}
                             </span>
                             {!category.is_active && (

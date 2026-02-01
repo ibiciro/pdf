@@ -26,6 +26,10 @@ const CATEGORY_COLORS: Record<string, string> = {
   pink: 'bg-pink-100 text-pink-700 border-pink-200',
   cyan: 'bg-cyan-100 text-cyan-700 border-cyan-200',
   emerald: 'bg-emerald-100 text-emerald-700 border-emerald-200',
+  indigo: 'bg-indigo-100 text-indigo-700 border-indigo-200',
+  orange: 'bg-orange-100 text-orange-700 border-orange-200',
+  teal: 'bg-teal-100 text-teal-700 border-teal-200',
+  rose: 'bg-rose-100 text-rose-700 border-rose-200',
 };
 
 export default function UploadModal({ onClose, onSuccess }: UploadModalProps) {

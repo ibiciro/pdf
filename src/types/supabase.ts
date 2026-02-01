@@ -133,6 +133,7 @@ export type Database = {
           content_body: string | null
           content_type: string
           created_at: string
+          creator_avatar: string | null
           creator_id: string
           description: string | null
           download_price_cents: number | null
@@ -144,6 +145,7 @@ export type Database = {
           thumbnail_url: string | null
           title: string
           total_earnings_cents: number
+          total_likes: number | null
           total_reads: number
           updated_at: string | null
         }
@@ -152,6 +154,7 @@ export type Database = {
           content_body?: string | null
           content_type: string
           created_at?: string
+          creator_avatar?: string | null
           creator_id: string
           description?: string | null
           download_price_cents?: number | null
@@ -163,6 +166,7 @@ export type Database = {
           thumbnail_url?: string | null
           title: string
           total_earnings_cents?: number
+          total_likes?: number | null
           total_reads?: number
           updated_at?: string | null
         }
@@ -171,6 +175,7 @@ export type Database = {
           content_body?: string | null
           content_type?: string
           created_at?: string
+          creator_avatar?: string | null
           creator_id?: string
           description?: string | null
           download_price_cents?: number | null
@@ -182,6 +187,7 @@ export type Database = {
           thumbnail_url?: string | null
           title?: string
           total_earnings_cents?: number
+          total_likes?: number | null
           total_reads?: number
           updated_at?: string | null
         }
@@ -263,6 +269,42 @@ export type Database = {
           },
           {
             foreignKeyName: "content_downloads_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      content_likes: {
+        Row: {
+          content_id: string
+          created_at: string | null
+          id: string
+          user_id: string
+        }
+        Insert: {
+          content_id: string
+          created_at?: string | null
+          id?: string
+          user_id: string
+        }
+        Update: {
+          content_id?: string
+          created_at?: string | null
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_likes_content_id_fkey"
+            columns: ["content_id"]
+            isOneToOne: false
+            referencedRelation: "content"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "content_likes_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
@@ -352,6 +394,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      payment_gateway_settings: {
+        Row: {
+          client_id: string | null
+          client_secret: string | null
+          created_at: string | null
+          gateway_id: string
+          id: string
+          is_enabled: boolean | null
+          public_key: string | null
+          sandbox_mode: boolean | null
+          updated_at: string | null
+          webhook_secret: string | null
+        }
+        Insert: {
+          client_id?: string | null
+          client_secret?: string | null
+          created_at?: string | null
+          gateway_id: string
+          id?: string
+          is_enabled?: boolean | null
+          public_key?: string | null
+          sandbox_mode?: boolean | null
+          updated_at?: string | null
+          webhook_secret?: string | null
+        }
+        Update: {
+          client_id?: string | null
+          client_secret?: string | null
+          created_at?: string | null
+          gateway_id?: string
+          id?: string
+          is_enabled?: boolean | null
+          public_key?: string | null
+          sandbox_mode?: boolean | null
+          updated_at?: string | null
+          webhook_secret?: string | null
+        }
+        Relationships: []
       }
       payments: {
         Row: {
@@ -563,9 +644,48 @@ export type Database = {
           },
         ]
       }
+      saved_content: {
+        Row: {
+          content_id: string
+          created_at: string | null
+          id: string
+          user_id: string
+        }
+        Insert: {
+          content_id: string
+          created_at?: string | null
+          id?: string
+          user_id: string
+        }
+        Update: {
+          content_id?: string
+          created_at?: string | null
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "saved_content_content_id_fkey"
+            columns: ["content_id"]
+            isOneToOne: false
+            referencedRelation: "content"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "saved_content_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       users: {
         Row: {
           avatar_url: string | null
+          bank_account: string | null
+          bank_name: string | null
+          bank_routing: string | null
           bio: string | null
           created_at: string
           email: string | null
@@ -574,6 +694,7 @@ export type Database = {
           image: string | null
           is_verified: boolean | null
           name: string | null
+          paypal_email: string | null
           role: string | null
           token_identifier: string
           total_earnings_cents: number | null
@@ -583,6 +704,9 @@ export type Database = {
         }
         Insert: {
           avatar_url?: string | null
+          bank_account?: string | null
+          bank_name?: string | null
+          bank_routing?: string | null
           bio?: string | null
           created_at?: string
           email?: string | null
@@ -591,6 +715,7 @@ export type Database = {
           image?: string | null
           is_verified?: boolean | null
           name?: string | null
+          paypal_email?: string | null
           role?: string | null
           token_identifier: string
           total_earnings_cents?: number | null
@@ -600,6 +725,9 @@ export type Database = {
         }
         Update: {
           avatar_url?: string | null
+          bank_account?: string | null
+          bank_name?: string | null
+          bank_routing?: string | null
           bio?: string | null
           created_at?: string
           email?: string | null
@@ -608,6 +736,7 @@ export type Database = {
           image?: string | null
           is_verified?: boolean | null
           name?: string | null
+          paypal_email?: string | null
           role?: string | null
           token_identifier?: string
           total_earnings_cents?: number | null
